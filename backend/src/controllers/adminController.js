@@ -349,13 +349,19 @@ export async function createInvite(req, res) {
     );
     const createdByName = creator[0]?.full_name || 'Un membre de l\'équipe';
 
-    sendInviteEmail({
-      to: email,
-      inviteToken: token,
-      inviteCode: code,
-      expiresAt: expireDate,
-      createdByName
-    }).catch((err) => logger.warn('Invite email failed:', err.message));
+    let emailSent = true;
+    try {
+      await sendInviteEmail({
+        to: email,
+        inviteToken: token,
+        inviteCode: code,
+        expiresAt: expireDate,
+        createdByName
+      });
+    } catch (err) {
+      emailSent = false;
+      logger.warn(`Invite email failed for ${email}: ${err.message}`);
+    }
 
     logger.info(`Invite created by ${req.user.role} ${adminId} for ${email} (${inviteRole})`);
 
@@ -369,8 +375,12 @@ export async function createInvite(req, res) {
         role: inviteRole,
         token,
         code,
-        expiresAt: expireDate
-      }
+        expiresAt: expireDate,
+        emailSent
+      },
+      message: emailSent
+        ? 'Invitation creee et email envoye'
+        : 'Invitation creee mais email non envoye (SMTP a verifier)'
     });
   } catch (err) {
     logger.error('Error creating invite:', err);

@@ -53,7 +53,11 @@ export default function AdminUsersPage() {
     createInvite(form, {
       onSuccess: (res) => {
         const invite = res?.data?.invite;
-        toast.success('Invitation envoyée');
+        if (invite?.emailSent) {
+          toast.success('Invitation envoyee par email');
+        } else {
+          toast.error('Invitation creee mais email non envoye (SMTP)');
+        }
         if (invite?.token) {
           navigator.clipboard?.writeText(`https://promoteam.sauroraa.be/register?token=${invite.token}`);
         }

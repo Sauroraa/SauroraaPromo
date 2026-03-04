@@ -20,6 +20,7 @@ export default function Sidebar() {
     { path: '/admin', label: 'Dashboard' },
     { path: '/admin/proofs', label: 'Preuves' },
     { path: '/admin/missions', label: 'Missions' },
+    { path: '/admin/invites', label: 'Invitations' },
     { path: '/leaderboard', label: 'Leaderboard' }
   ];
 
@@ -27,6 +28,7 @@ export default function Sidebar() {
     { path: '/admin', label: 'Dashboard' },
     { path: '/admin/proofs', label: 'Preuves' },
     { path: '/admin/missions', label: 'Missions' },
+    { path: '/admin/invites', label: 'Invitations' },
     { path: '/admin/users', label: 'Utilisateurs' }
   ];
 

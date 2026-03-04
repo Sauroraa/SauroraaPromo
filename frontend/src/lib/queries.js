@@ -60,6 +60,6 @@ export const adminApi = {
   getInvites: () => api.get('/admin/invites'),
   createInvite: (data) => api.post('/admin/invite', data),
   resendInvite: (id) => api.post(`/admin/invites/${id}/resend`),
-  deleteInvite: (id) => api.delete(`/admin/invites/${id}`),
+  deleteInvite: (id) => api.post(`/admin/invites/${id}/delete`),
   generateInvites: (count, expiresIn) => api.post('/admin/invites', { count, expiresIn })
 };

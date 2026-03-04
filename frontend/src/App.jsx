@@ -22,6 +22,7 @@ import AdminDashboardPage from './pages/AdminDashboardPage';
 import AdminProofsPage from './pages/AdminProofsPage';
 import AdminMissionsPage from './pages/AdminMissionsPage';
 import AdminUsersPage from './pages/AdminUsersPage';
+import AdminInvitesPage from './pages/AdminInvitesPage';
 
 import './index.css';
 
@@ -79,6 +80,7 @@ export default function App() {
           <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin', 'staff']}><AdminDashboardPage /></ProtectedRoute>} />
           <Route path="/admin/proofs" element={<ProtectedRoute allowedRoles={['admin', 'staff']}><AdminProofsPage /></ProtectedRoute>} />
           <Route path="/admin/missions" element={<ProtectedRoute allowedRoles={['admin', 'staff']}><AdminMissionsPage /></ProtectedRoute>} />
+          <Route path="/admin/invites" element={<ProtectedRoute allowedRoles={['admin', 'staff']}><AdminInvitesPage /></ProtectedRoute>} />
           <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['admin']}><AdminUsersPage /></ProtectedRoute>} />
 
           {/* Redirects */}

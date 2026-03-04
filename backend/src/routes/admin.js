@@ -53,5 +53,9 @@ router.post('/invite', createInvite);
 router.post('/invites', generateInvites);
 router.post('/invites/:inviteId/resend', resendInvite);
 router.delete('/invites/:inviteId', deleteInvite);
+// Compatibility aliases
+router.post('/invite/:inviteId/resend', resendInvite);
+router.post('/invites/:inviteId/delete', deleteInvite);
+router.post('/invite/:inviteId/delete', deleteInvite);
 
 export default router;

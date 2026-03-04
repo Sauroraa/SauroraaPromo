@@ -21,6 +21,7 @@ export default function Header() {
         { to: '/admin', label: 'Dashboard' },
         { to: '/admin/proofs', label: 'Preuves' },
         { to: '/admin/missions', label: 'Missions' },
+        { to: '/admin/invites', label: 'Invitations' },
         { to: '/admin/users', label: 'Utilisateurs' },
         { to: '/profile', label: 'Profil' }
       ];
@@ -30,6 +31,7 @@ export default function Header() {
         { to: '/admin', label: 'Dashboard' },
         { to: '/admin/proofs', label: 'Preuves' },
         { to: '/admin/missions', label: 'Missions' },
+        { to: '/admin/invites', label: 'Invitations' },
         { to: '/leaderboard', label: 'Leaderboard' },
         { to: '/profile', label: 'Profil' }
       ];

@@ -1,32 +1,27 @@
 import React, { useState } from 'react';
-import {
-  useAdminProofs,
-  useAdminProofDetail,
-  useApproveProof,
-  useRejectProof
-} from '../hooks/useQueries';
+import { useAdminProofDetail, useAdminProofs, useApproveProof, useRejectProof } from '../hooks/useQueries';
 import toast from 'react-hot-toast';
 
 const API_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
 
-function RejectModal({ onConfirm, onCancel }) {
+function RejectModal({ onCancel, onConfirm }) {
   const [reason, setReason] = useState('');
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
-      <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 w-full max-w-md">
-        <h3 className="text-white font-bold text-lg mb-4">Raison du rejet</h3>
+    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+      <div className="surface-card reject-modal">
+        <h3 className="section-title">Raison du rejet</h3>
         <textarea
+          className="ui-input ui-textarea"
           value={reason}
-          onChange={e => setReason(e.target.value)}
-          placeholder="Optionnel — explique pourquoi la preuve est refusée..."
-          className="input w-full h-28 resize-none mb-4"
+          onChange={(e) => setReason(e.target.value)}
+          placeholder="Expliquez la raison du rejet (optionnel)"
         />
-        <div className="flex gap-3">
-          <button onClick={onCancel} className="btn btn-secondary flex-1">Annuler</button>
-          <button
-            onClick={() => onConfirm(reason)}
-            className="btn btn-danger flex-1"
-          >
+        <div className="mission-actions">
+          <button className="ui-btn-ghost" onClick={onCancel}>
+            Annuler
+          </button>
+          <button className="ui-btn-danger" onClick={() => onConfirm(reason)}>
             Confirmer le rejet
           </button>
         </div>
@@ -42,121 +37,118 @@ export default function ProofReviewPanel() {
 
   const { data: listData, isLoading: listLoading } = useAdminProofs(status);
   const { data: detail, isLoading: detailLoading } = useAdminProofDetail(selectedId);
+  const { mutate: approveProof, isPending: isApproving } = useApproveProof();
+  const { mutate: rejectProof, isPending: isRejecting } = useRejectProof();
 
-  const { mutate: approve, isPending: isApproving } = useApproveProof();
-  const { mutate: reject, isPending: isRejecting } = useRejectProof();
+  const proofs = listData?.proofs || [];
 
-  const proofs = listData?.proofs ?? [];
-
-  const handleApprove = () => {
-    approve(selectedId, {
+  const approve = () => {
+    if (!selectedId) return;
+    approveProof(selectedId, {
       onSuccess: (res) => {
-        toast.success(`Preuve approuvée — +${res.data?.pointsAwarded ?? 0} points`);
+        toast.success(`Preuve approuvee (+${res.data?.pointsAwarded || 0} pts)`);
         setSelectedId(null);
       },
-      onError: (err) => toast.error(err.response?.data?.error || 'Erreur lors de l\'approbation')
+      onError: (err) => toast.error(err.response?.data?.error || 'Erreur approbation')
     });
   };
 
-  const handleRejectConfirm = (reason) => {
+  const reject = (reason) => {
     setShowRejectModal(false);
-    reject({ id: selectedId, reason }, {
-      onSuccess: () => {
-        toast.success('Preuve rejetée');
-        setSelectedId(null);
-      },
-      onError: (err) => toast.error(err.response?.data?.error || 'Erreur lors du rejet')
-    });
-  };
-
-  const statusLabels = {
-    pending: `⏳ En attente${status === 'pending' ? ` (${proofs.length})` : ''}`,
-    approved: '✅ Approuvées',
-    rejected: '❌ Rejetées'
+    if (!selectedId) return;
+    rejectProof(
+      { id: selectedId, reason },
+      {
+        onSuccess: () => {
+          toast.success('Preuve rejetee');
+          setSelectedId(null);
+        },
+        onError: (err) => toast.error(err.response?.data?.error || 'Erreur rejet')
+      }
+    );
   };
 
   return (
     <>
-      {showRejectModal && (
-        <RejectModal
-          onConfirm={handleRejectConfirm}
-          onCancel={() => setShowRejectModal(false)}
-        />
-      )}
+      {showRejectModal && <RejectModal onCancel={() => setShowRejectModal(false)} onConfirm={reject} />}
 
-      <div className="grid grid-cols-5 gap-6">
-        {/* Liste des preuves */}
-        <div className="col-span-2">
-          <div className="mb-4 flex gap-2 flex-wrap">
-            {Object.entries(statusLabels).map(([s, label]) => (
-              <button
-                key={s}
-                onClick={() => { setStatus(s); setSelectedId(null); }}
-                className={`px-3 py-2 rounded-lg text-sm font-medium transition ${
-                  status === s ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
+      <div className="proof-review-layout">
+        <section className="surface-card proof-list-panel">
+          <div className="proof-filter-bar">
+            <button
+              className={`proof-filter-btn ${status === 'pending' ? 'proof-filter-btn-active' : ''}`}
+              onClick={() => {
+                setStatus('pending');
+                setSelectedId(null);
+              }}
+            >
+              En attente ({status === 'pending' ? proofs.length : ''})
+            </button>
+            <button
+              className={`proof-filter-btn ${status === 'approved' ? 'proof-filter-btn-active' : ''}`}
+              onClick={() => {
+                setStatus('approved');
+                setSelectedId(null);
+              }}
+            >
+              Approuvees
+            </button>
+            <button
+              className={`proof-filter-btn ${status === 'rejected' ? 'proof-filter-btn-active' : ''}`}
+              onClick={() => {
+                setStatus('rejected');
+                setSelectedId(null);
+              }}
+            >
+              Rejetees
+            </button>
           </div>
 
           {listLoading ? (
-            <p className="text-slate-400 text-sm text-center py-4">Chargement...</p>
+            <p className="cell-muted">Chargement...</p>
           ) : proofs.length === 0 ? (
-            <p className="text-slate-500 text-sm text-center py-8">Aucune preuve</p>
+            <p className="cell-muted">Aucune preuve a afficher.</p>
           ) : (
-            <div className="space-y-2 max-h-[600px] overflow-y-auto pr-1">
-              {proofs.map(proof => (
-                <div
+            <div className="proof-admin-list">
+              {proofs.map((proof) => (
+                <button
                   key={proof.id}
+                  className={`proof-admin-item ${selectedId === proof.id ? 'proof-admin-item-active' : ''}`}
                   onClick={() => setSelectedId(proof.id)}
-                  className={`p-3 rounded-lg cursor-pointer transition border ${
-                    selectedId === proof.id
-                      ? 'bg-blue-600 border-blue-500'
-                      : 'bg-slate-700 hover:bg-slate-600 border-transparent'
-                  }`}
                 >
-                  <div className="flex justify-between items-start">
-                    <p className="font-medium text-white text-sm">@{proof.insta_username}</p>
-                    <p className="text-xs text-slate-400">{proof.images_count} img</p>
+                  <div>
+                    <strong>@{proof.insta_username}</strong>
+                    <p>{proof.title}</p>
                   </div>
-                  <p className="text-xs text-slate-400 mt-0.5 truncate">{proof.title}</p>
-                  <p className="text-xs text-slate-500 mt-1">
-                    {new Date(proof.created_at).toLocaleDateString('fr-FR')}
-                  </p>
-                </div>
+                  <span className="chip">{proof.images_count} img</span>
+                </button>
               ))}
             </div>
           )}
-        </div>
+        </section>
 
-        {/* Détail de la preuve */}
-        <div className="col-span-3">
+        <section className="surface-card">
           {!selectedId ? (
-            <div className="flex items-center justify-center h-64 text-slate-500">
-              Sélectionne une preuve pour la reviewer
-            </div>
+            <p className="cell-muted">Selectionnez une preuve pour afficher le detail.</p>
           ) : detailLoading ? (
-            <div className="flex items-center justify-center h-64 text-slate-400">
-              Chargement...
-            </div>
-          ) : detail ? (
+            <p className="cell-muted">Chargement detail...</p>
+          ) : !detail ? (
+            <p className="cell-muted">Detail indisponible.</p>
+          ) : (
             <div>
-              <div className="mb-4">
-                <h3 className="text-white font-bold text-lg">@{detail.insta_username}</h3>
-                <p className="text-slate-400 text-sm">{detail.title}</p>
-                <div className="flex gap-3 mt-2 text-sm">
-                  <span className="text-blue-400">{detail.images_count} image(s)</span>
-                  <span className="text-green-400">{detail.points_per_proof} pt/img</span>
-                  <span className="text-slate-500">
-                    Soumis le {new Date(detail.created_at).toLocaleDateString('fr-FR')}
-                  </span>
-                </div>
+              <div className="proof-card-head">
+                <h3>@{detail.insta_username}</h3>
+                <span className="chip">{detail.status}</span>
+              </div>
+              <p className="cell-muted">{detail.title}</p>
+              <div className="mission-tags">
+                <span className="chip">{detail.images_count} image(s)</span>
+                <span className="chip">{detail.points_per_proof} pts / image</span>
+                <span className="chip">{new Date(detail.created_at).toLocaleDateString('fr-FR')}</span>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 mb-4 max-h-96 overflow-y-auto">
-                {detail.images?.map(img => (
+              <div className="proof-admin-images">
+                {(detail.images || []).map((img) => (
                   <a
                     key={img.id}
                     href={`${API_URL}/uploads/proofs/${detail.user_id}/${img.image_path}`}
@@ -166,40 +158,35 @@ export default function ProofReviewPanel() {
                     <img
                       src={`${API_URL}/uploads/proofs/${detail.user_id}/${img.image_path}`}
                       alt="preuve"
-                      className="w-full rounded-lg object-cover hover:opacity-90 transition"
+                      className="proof-admin-image"
                     />
                   </a>
                 ))}
               </div>
 
               {status === 'pending' && (
-                <div className="flex gap-3">
-                  <button
-                    onClick={handleApprove}
-                    disabled={isApproving || isRejecting}
-                    className="btn btn-success flex-1"
-                  >
-                    {isApproving ? 'Approbation...' : '✅ Approuver tout'}
+                <div className="mission-actions">
+                  <button className="ui-btn-primary" onClick={approve} disabled={isApproving || isRejecting}>
+                    {isApproving ? 'Approbation...' : 'Approuver'}
                   </button>
                   <button
+                    className="ui-btn-danger"
                     onClick={() => setShowRejectModal(true)}
                     disabled={isApproving || isRejecting}
-                    className="btn btn-danger flex-1"
                   >
-                    ❌ Rejeter
+                    Rejeter
                   </button>
                 </div>
               )}
 
               {detail.status === 'rejected' && detail.reject_reason && (
-                <div className="mt-3 p-3 bg-red-900 bg-opacity-30 border border-red-800 rounded-lg">
-                  <p className="text-red-400 text-sm font-medium">Raison du rejet :</p>
-                  <p className="text-red-300 text-sm mt-1">{detail.reject_reason}</p>
+                <div className="proof-reason">
+                  <strong>Raison du rejet:</strong> {detail.reject_reason}
                 </div>
               )}
             </div>
-          ) : null}
-        </div>
+          )}
+        </section>
       </div>
     </>
   );

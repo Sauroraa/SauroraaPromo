@@ -1,38 +1,39 @@
 import React from 'react';
-import ProofReviewPanel from '../components/ProofReviewPanel';
 import { useAdminStats } from '../hooks/useQueries';
+import ProofReviewPanel from '../components/ProofReviewPanel';
 
 export default function AdminProofsPage() {
   const { data: stats, isLoading } = useAdminStats();
 
-  if (isLoading) return <div className="text-center text-slate-400 py-8">Chargement...</div>;
+  if (isLoading) return <div className="page-loading">Chargement...</div>;
 
   return (
-    <div className="max-w-7xl mx-auto">
-      <h1 className="text-3xl font-bold text-white mb-8">Gestion des preuves</h1>
+    <div className="page-wrap">
+      <div className="page-head">
+        <h1 className="page-title">Validation des preuves</h1>
+        <p className="page-subtitle">Moderez les preuves envoyees par les promoteurs.</p>
+      </div>
 
-      <div className="grid grid-cols-4 gap-4 mb-8">
-        <div className="card">
-          <p className="text-slate-400 text-sm">Preuves aujourd'hui</p>
-          <p className="text-3xl font-bold text-blue-400 mt-2">{stats?.proofs_today || 0}</p>
+      <div className="stats-grid">
+        <div className="metric-card">
+          <span className="metric-label">Preuves aujourd'hui</span>
+          <strong className="metric-value">{stats?.proofs_today || 0}</strong>
         </div>
-        <div className="card">
-          <p className="text-slate-400 text-sm">Preuves en attente</p>
-          <p className="text-3xl font-bold text-yellow-400 mt-2">{stats?.pending_proofs || 0}</p>
+        <div className="metric-card">
+          <span className="metric-label">Preuves en attente</span>
+          <strong className="metric-value">{stats?.pending_proofs || 0}</strong>
         </div>
-        <div className="card">
-          <p className="text-slate-400 text-sm">Points distribués</p>
-          <p className="text-3xl font-bold text-green-400 mt-2">{stats?.points_distributed_today || 0}</p>
+        <div className="metric-card">
+          <span className="metric-label">Points distribues</span>
+          <strong className="metric-value">{stats?.points_distributed_today || 0}</strong>
         </div>
-        <div className="card">
-          <p className="text-slate-400 text-sm">Promoteurs actifs</p>
-          <p className="text-3xl font-bold text-purple-400 mt-2">{stats?.active_promoters_today || 0}</p>
+        <div className="metric-card">
+          <span className="metric-label">Promoteurs actifs</span>
+          <strong className="metric-value">{stats?.active_promoters_today || 0}</strong>
         </div>
       </div>
 
-      <div className="card">
-        <ProofReviewPanel />
-      </div>
+      <ProofReviewPanel />
     </div>
   );
 }

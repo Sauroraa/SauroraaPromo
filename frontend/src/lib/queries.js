@@ -3,6 +3,8 @@ import api from './api';
 export const authApi = {
   register: (data) => api.post('/auth/register', data),
   login: (data) => api.post('/auth/login', data),
+  forgotPassword: (data) => api.post('/auth/forgot-password', data),
+  resetPassword: (data) => api.post('/auth/reset-password', data),
   logout: () => api.post('/auth/logout'),
   getCurrentUser: () => api.get('/auth/me'),
   getInvite: (token) => api.get(`/invite/${token}`),
@@ -26,6 +28,7 @@ export const proofsApi = {
 export const usersApi = {
   getProfile: (id) => api.get(`/users/${id}`),
   getMyProfile: () => api.get('/users/me'),
+  getMyNotifications: (limit = 20) => api.get(`/users/me/notifications?limit=${limit}`),
   getLeaderboard: (limit = 20, offset = 0) => 
     api.get(`/users/leaderboard?limit=${limit}&offset=${offset}`),
   updateProfile: (data) => api.patch('/users/me', data)

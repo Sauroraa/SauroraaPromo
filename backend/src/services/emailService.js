@@ -160,3 +160,25 @@ export async function sendInviteEmail({ to, inviteToken, inviteCode, expiresAt, 
     `)
   });
 }
+
+export async function sendPasswordResetEmail({ to, firstName, resetToken }) {
+  const resetUrl = `${FRONTEND_URL}/reset-password?token=${resetToken}`;
+
+  await send({
+    to,
+    subject: 'Reinitialisation de votre mot de passe Promoteam',
+    html: baseTemplate(`
+      <h2>Reinitialisation du mot de passe</h2>
+      <p>Bonjour <span class="highlight">${firstName || 'Utilisateur'}</span>,</p>
+      <p>
+        Une demande de reinitialisation de mot de passe a ete effectuee pour votre compte Promoteam.
+      </p>
+      <p>Ce lien est valide pendant 60 minutes.</p>
+      <a href="${resetUrl}" class="btn">Reinitialiser mon mot de passe</a>
+      <hr class="divider">
+      <p style="font-size:13px;">
+        Si vous n'etes pas a l'origine de cette demande, ignorez simplement cet email.
+      </p>
+    `)
+  });
+}

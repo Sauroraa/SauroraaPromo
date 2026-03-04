@@ -1,65 +1,86 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useMyProofs } from '../hooks/useQueries';
+
+const FILTERS = [
+  { key: 'all', label: 'Toutes' },
+  { key: 'pending', label: 'En attente' },
+  { key: 'approved', label: 'Approuvees' },
+  { key: 'rejected', label: 'Rejetees' }
+];
+
+function statusChip(status) {
+  if (status === 'approved') return 'chip chip-success';
+  if (status === 'pending') return 'chip chip-warning';
+  return 'chip';
+}
+
+function statusLabel(status) {
+  if (status === 'approved') return 'Approuvee';
+  if (status === 'pending') return 'En attente';
+  if (status === 'rejected') return 'Rejetee';
+  return status;
+}
 
 export default function ProofsPage() {
   const { data: proofs, isLoading } = useMyProofs();
   const [filter, setFilter] = useState('all');
+  const list = proofs || [];
 
-  if (isLoading) return <div className="text-center text-slate-400 py-8">Chargement...</div>;
+  const filtered = useMemo(() => {
+    if (filter === 'all') return list;
+    return list.filter((p) => p.status === filter);
+  }, [list, filter]);
 
-  const filtered = proofs?.filter(p => filter === 'all' || p.status === filter) || [];
+  if (isLoading) return <div className="page-loading">Chargement...</div>;
 
   return (
-    <div className="max-w-6xl mx-auto">
-      <h1 className="text-3xl font-bold text-white mb-8">Mes preuves</h1>
+    <div className="page-wrap">
+      <div className="page-head">
+        <h1 className="page-title">Mes preuves</h1>
+        <p className="page-subtitle">Suivez le statut de toutes vos soumissions.</p>
+      </div>
 
-      <div className="mb-6 flex gap-2">
-        {['all', 'pending', 'approved', 'rejected'].map(s => (
+      <div className="proof-filter-bar">
+        {FILTERS.map((f) => (
           <button
-            key={s}
-            onClick={() => setFilter(s)}
-            className={`px-4 py-2 rounded-lg font-medium transition ${
-              filter === s ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
-            }`}
+            key={f.key}
+            onClick={() => setFilter(f.key)}
+            className={`proof-filter-btn ${filter === f.key ? 'proof-filter-btn-active' : ''}`}
           >
-            {s === 'all' && `Tous (${proofs?.length || 0})`}
-            {s === 'pending' && '⏳ En attente'}
-            {s === 'approved' && '✅ Approuvées'}
-            {s === 'rejected' && '❌ Rejetées'}
+            {f.label}
+            {f.key === 'all' ? ` (${list.length})` : ''}
           </button>
         ))}
       </div>
 
-      <div className="grid gap-4">
-        {filtered.length > 0 ? (
-          filtered.map(proof => (
-            <div key={proof.id} className="card">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="text-white font-bold text-lg">{proof.title}</h3>
-                  <p className="text-slate-400 text-sm mt-1">{proof.images_count} image(s)</p>
-                  <p className="text-slate-500 text-xs mt-2">
-                    Envoyé: {new Date(proof.created_at).toLocaleDateString('fr-FR')}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <span className={`badge ${
-                    proof.status === 'approved' ? 'badge-success' :
-                    proof.status === 'pending' ? 'badge-pending' :
-                    'badge-rejected'
-                  }`}>
-                    {proof.status === 'approved' && '✅ Approuvée'}
-                    {proof.status === 'pending' && '⏳ En attente'}
-                    {proof.status === 'rejected' && '❌ Rejetée'}
-                  </span>
-                </div>
+      {filtered.length === 0 ? (
+        <section className="surface-card">
+          <p className="cell-muted">Aucune preuve trouvee pour ce filtre.</p>
+        </section>
+      ) : (
+        <section className="proof-grid">
+          {filtered.map((proof) => (
+            <article key={proof.id} className="proof-card">
+              <div className="proof-card-head">
+                <h3>{proof.title}</h3>
+                <span className={statusChip(proof.status)}>{statusLabel(proof.status)}</span>
               </div>
-            </div>
-          ))
-        ) : (
-          <p className="text-center text-slate-400 py-8">Aucune preuve trouvée</p>
-        )}
-      </div>
+
+              <div className="mission-tags">
+                <span className="chip">{proof.images_count} image(s)</span>
+                <span className="chip">{new Date(proof.created_at).toLocaleDateString('fr-FR')}</span>
+                {proof.reviewed_at && <span className="chip">Revise: {new Date(proof.reviewed_at).toLocaleDateString('fr-FR')}</span>}
+              </div>
+
+              {proof.reject_reason && (
+                <div className="proof-reason">
+                  <strong>Motif:</strong> {proof.reject_reason}
+                </div>
+              )}
+            </article>
+          ))}
+        </section>
+      )}
     </div>
   );
 }

@@ -22,12 +22,8 @@ export default function AdminUsersPage() {
 
   const [search, setSearch] = useState('');
   const [form, setForm] = useState({
-    firstName: '',
-    lastName: '',
     email: '',
-    phone: '',
-    role: 'promoter',
-    expiresHours: 48
+    role: 'promoter'
   });
 
   const filteredUsers = useMemo(() => {
@@ -62,12 +58,8 @@ export default function AdminUsersPage() {
           navigator.clipboard?.writeText(`https://promoteam.sauroraa.be/register?token=${invite.token}`);
         }
         setForm({
-          firstName: '',
-          lastName: '',
           email: '',
-          phone: '',
-          role: 'promoter',
-          expiresHours: 48
+          role: 'promoter'
         });
       },
       onError: (err) => toast.error(err.response?.data?.error || 'Erreur d’invitation')
@@ -171,23 +163,8 @@ export default function AdminUsersPage() {
 
         <section className="surface-card">
           <h2 className="section-title">Inviter un Utilisateur</h2>
+          <p className="cell-muted">Saisissez seulement l'email. Le lien d'inscription expire automatiquement en 7 jours.</p>
           <form className="invite-form" onSubmit={handleInviteSubmit}>
-            <div className="form-grid-2">
-              <input
-                className="ui-input"
-                placeholder="Prénom"
-                value={form.firstName}
-                onChange={(e) => setForm((s) => ({ ...s, firstName: e.target.value }))}
-                required
-              />
-              <input
-                className="ui-input"
-                placeholder="Nom"
-                value={form.lastName}
-                onChange={(e) => setForm((s) => ({ ...s, lastName: e.target.value }))}
-                required
-              />
-            </div>
             <input
               className="ui-input"
               type="email"
@@ -196,31 +173,14 @@ export default function AdminUsersPage() {
               onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))}
               required
             />
-            <input
-              className="ui-input"
-              placeholder="Téléphone (optionnel)"
-              value={form.phone}
-              onChange={(e) => setForm((s) => ({ ...s, phone: e.target.value }))}
-            />
-            <div className="form-grid-2">
-              <select
-                className="ui-select"
-                value={form.role}
-                onChange={(e) => setForm((s) => ({ ...s, role: e.target.value }))}
-              >
-                <option value="promoter">Promoteur</option>
-                <option value="staff">Staff</option>
-              </select>
-              <input
-                className="ui-input"
-                type="number"
-                min={1}
-                max={168}
-                value={form.expiresHours}
-                onChange={(e) => setForm((s) => ({ ...s, expiresHours: Number(e.target.value) || 48 }))}
-                placeholder="Durée (heures)"
-              />
-            </div>
+            <select
+              className="ui-select"
+              value={form.role}
+              onChange={(e) => setForm((s) => ({ ...s, role: e.target.value }))}
+            >
+              <option value="promoter">Promoteur</option>
+              <option value="staff">Staff</option>
+            </select>
             <button className="ui-btn-primary" type="submit" disabled={inviteSubmitting}>
               {inviteSubmitting ? 'Envoi...' : 'Envoyer l’invitation'}
             </button>
@@ -231,7 +191,7 @@ export default function AdminUsersPage() {
             {invites.slice(0, 6).map((inv) => (
               <div className="invite-item" key={inv.id}>
                 <div>
-                  <strong>{inv.first_name} {inv.last_name}</strong>
+                  <strong>{inv.first_name || inv.last_name ? `${inv.first_name} ${inv.last_name}` : 'Invitation email'}</strong>
                   <p>{inv.email}</p>
                 </div>
                 <span className={inv.used_at ? 'chip chip-success' : 'chip chip-warning'}>

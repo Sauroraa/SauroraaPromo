@@ -79,7 +79,7 @@ export async function getLeaderboardData(req, res) {
 export async function updateProfile(req, res) {
   try {
     const userId = req.user.userId;
-    const { firstName, lastName, email } = req.body;
+    const { firstName, lastName, email, phone, instaUsername } = req.body;
 
     const updates = [];
     const values = [];
@@ -95,6 +95,14 @@ export async function updateProfile(req, res) {
     if (email) {
       updates.push('email = ?');
       values.push(email);
+    }
+    if (phone !== undefined) {
+      updates.push('phone = ?');
+      values.push(phone || null);
+    }
+    if (instaUsername) {
+      updates.push('insta_username = ?');
+      values.push(instaUsername);
     }
 
     if (updates.length === 0) {
@@ -114,5 +122,57 @@ export async function updateProfile(req, res) {
   } catch (err) {
     logger.error('Error updating profile:', err);
     res.status(500).json({ error: 'Failed to update profile' });
+  }
+}
+
+export async function getMyNotifications(req, res) {
+  try {
+    const userId = req.user.userId;
+    const limit = Math.min(parseInt(req.query.limit, 10) || 20, 50);
+
+    const proofEvents = await query(
+      `SELECT p.id, p.status, p.reviewed_at, m.title
+       FROM proofs p
+       JOIN missions m ON m.id = p.mission_id
+       WHERE p.user_id = ?
+         AND p.status IN ('approved', 'rejected')
+         AND p.reviewed_at IS NOT NULL
+       ORDER BY p.reviewed_at DESC
+       LIMIT ?`,
+      [userId, limit]
+    );
+
+    const pointEvents = await query(
+      `SELECT id, points, reason, created_at
+       FROM points_history
+       WHERE user_id = ?
+       ORDER BY created_at DESC
+       LIMIT ?`,
+      [userId, limit]
+    );
+
+    const notifications = [
+      ...proofEvents.map((event) => ({
+        id: `proof-${event.id}`,
+        type: event.status === 'approved' ? 'proof_approved' : 'proof_rejected',
+        title: event.status === 'approved' ? 'Preuve approuvee' : 'Preuve rejetee',
+        message: `Mission: ${event.title}`,
+        createdAt: event.reviewed_at
+      })),
+      ...pointEvents.map((event) => ({
+        id: `points-${event.id}`,
+        type: 'points',
+        title: `+${event.points} points`,
+        message: event.reason || 'Points attribues',
+        createdAt: event.created_at
+      }))
+    ]
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .slice(0, limit);
+
+    res.json({ notifications });
+  } catch (err) {
+    logger.error('Error fetching notifications:', err);
+    res.status(500).json({ error: 'Failed to fetch notifications' });
   }
 }

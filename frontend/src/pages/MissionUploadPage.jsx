@@ -7,31 +7,33 @@ export default function MissionUploadPage() {
   const { missionId } = useParams();
   const { data: mission, isLoading } = useMissionDetail(missionId);
 
-  if (isLoading) return <div className="text-center text-slate-400 py-8">Chargement...</div>;
-
-  if (!mission) return <div className="text-center text-red-400 py-8">Mission non trouvée</div>;
+  if (isLoading) return <div className="page-loading">Chargement...</div>;
+  if (!mission) return <div className="page-loading">Mission non trouvee</div>;
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <div className="card mb-8">
-        <h1 className="text-3xl font-bold text-white mb-4">{mission.title}</h1>
-        <p className="text-slate-400 mb-4">{mission.description}</p>
-        
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <p className="text-slate-400 text-sm">Type d'action</p>
-            <p className="text-white font-medium capitalize">{mission.action_type}</p>
-          </div>
-          <div>
-            <p className="text-slate-400 text-sm">Points par preuve</p>
-            <p className="text-green-400 font-bold">+{mission.points_per_proof}</p>
-          </div>
-        </div>
+    <div className="page-wrap">
+      <div className="page-head">
+        <h1 className="page-title">{mission.title}</h1>
+        <p className="page-subtitle">{mission.description || 'Ajoutez vos preuves pour cette mission.'}</p>
       </div>
 
-      <div className="card">
-        <h2 className="text-white font-bold text-lg mb-4">Envoyer des preuves</h2>
-        <DropzoneUpload missionId={missionId} />
+      <div className="split-grid mission-layout">
+        <section className="surface-card">
+          <h2 className="section-title">Details mission</h2>
+          <div className="mission-tags">
+            <span className="chip">{mission.action_type}</span>
+            <span className="chip chip-success">+{mission.points_per_proof} pts / preuve</span>
+            <span className="chip">Max {mission.max_per_user}</span>
+            {mission.deadline && (
+              <span className="chip">Echeance: {new Date(mission.deadline).toLocaleDateString('fr-FR')}</span>
+            )}
+          </div>
+        </section>
+
+        <section className="surface-card">
+          <h2 className="section-title">Envoyer des preuves</h2>
+          <DropzoneUpload missionId={missionId} />
+        </section>
       </div>
     </div>
   );

@@ -12,6 +12,9 @@ export default function RegisterPage() {
   const { data: invite, isLoading, isError } = useInvite(token);
   const { mutate: acceptInvite, isPending } = useAcceptInvite();
 
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [phone, setPhone] = useState('');
   const [instaUsername, setInstaUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -34,13 +37,18 @@ export default function RegisterPage() {
       return;
     }
 
+    if (!firstName.trim() || !lastName.trim()) {
+      toast.error('Prénom et nom requis');
+      return;
+    }
+
     acceptInvite(
       {
         token,
         inviteToken: token,
-        firstName: invite?.firstName,
-        lastName: invite?.lastName,
-        phone: invite?.phone,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        phone: phone.trim() || null,
         email: invite?.email,
         instaUsername,
         password
@@ -98,11 +106,46 @@ export default function RegisterPage() {
       <div className="login-card">
         <p className="login-kicker">Invitation Promoteam</p>
         <h1 className="login-title">Créer votre compte</h1>
-        <p className="login-subtitle">
-          {invite.firstName} {invite.lastName} • {invite.email}
-        </p>
+        <p className="login-subtitle">{invite.email}</p>
 
         <form onSubmit={handleSubmit} className="login-form">
+          <div className="form-grid-2">
+            <div>
+              <label className="login-label" htmlFor="firstName">Prénom</label>
+              <input
+                id="firstName"
+                type="text"
+                placeholder="Prénom"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                className="login-input"
+                required
+              />
+            </div>
+            <div>
+              <label className="login-label" htmlFor="lastName">Nom</label>
+              <input
+                id="lastName"
+                type="text"
+                placeholder="Nom"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                className="login-input"
+                required
+              />
+            </div>
+          </div>
+
+          <label className="login-label" htmlFor="phone">Téléphone (optionnel)</label>
+          <input
+            id="phone"
+            type="text"
+            placeholder="+32 ..."
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            className="login-input"
+          />
+
           <label className="login-label" htmlFor="insta">Pseudo Instagram</label>
           <input
             id="insta"

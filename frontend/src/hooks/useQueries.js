@@ -10,6 +10,14 @@ export function useRegister() {
   return useMutation({ mutationFn: queries.authApi.register });
 }
 
+export function useForgotPassword() {
+  return useMutation({ mutationFn: queries.authApi.forgotPassword });
+}
+
+export function useResetPassword() {
+  return useMutation({ mutationFn: queries.authApi.resetPassword });
+}
+
 export function useInvite(token) {
   return useQuery({
     queryKey: ['invite', token],
@@ -78,6 +86,25 @@ export function useMyProfile() {
   return useQuery({
     queryKey: ['myProfile'],
     queryFn: () => queries.usersApi.getMyProfile().then(r => r.data)
+  });
+}
+
+export function useMyNotifications(limit = 20) {
+  return useQuery({
+    queryKey: ['myNotifications', limit],
+    queryFn: () => queries.usersApi.getMyNotifications(limit).then(r => r.data),
+    refetchInterval: 30 * 1000
+  });
+}
+
+export function useUpdateProfile() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data) => queries.usersApi.updateProfile(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['myProfile'] });
+      queryClient.invalidateQueries({ queryKey: ['currentUser'] });
+    }
   });
 }
 

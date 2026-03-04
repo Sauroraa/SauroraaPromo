@@ -4,6 +4,8 @@ import { generateToken, generateRefreshToken, verifyToken } from '../utils/jwt.j
 import logger from '../utils/logger.js';
 import redis from '../config/redis.js';
 import { sendWelcomeEmail } from '../services/emailService.js';
+import { sendPasswordResetEmail } from '../services/emailService.js';
+import { randomBytes } from 'crypto';
 
 async function getValidInvite(tokenOrCode) {
   const inviteRows = await query(
@@ -296,4 +298,68 @@ export async function getInviteByToken(req, res) {
 
 export async function acceptInvite(req, res) {
   return register(req, res);
+}
+
+export async function forgotPassword(req, res) {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: 'Email requis' });
+    }
+
+    const users = await query(
+      `SELECT id, first_name, email, status FROM users WHERE email = ? LIMIT 1`,
+      [email]
+    );
+
+    // Always return success to avoid email enumeration.
+    if (users.length === 0 || users[0].status !== 'active') {
+      return res.json({ success: true, message: 'Si le compte existe, un email a ete envoye.' });
+    }
+
+    const user = users[0];
+    const token = randomBytes(32).toString('hex');
+    await redis.setEx(`password_reset:${token}`, 60 * 60, String(user.id));
+
+    sendPasswordResetEmail({
+      to: user.email,
+      firstName: user.first_name,
+      resetToken: token
+    }).catch((err) => logger.warn('Password reset email failed:', err.message));
+
+    res.json({ success: true, message: 'Si le compte existe, un email a ete envoye.' });
+  } catch (err) {
+    logger.error('Forgot password error:', err);
+    res.status(500).json({ error: 'Erreur mot de passe oublie' });
+  }
+}
+
+export async function resetPassword(req, res) {
+  try {
+    const { token, password } = req.body;
+    if (!token || !password) {
+      return res.status(400).json({ error: 'Token et mot de passe requis' });
+    }
+
+    if (password.length < 8) {
+      return res.status(400).json({ error: 'Le mot de passe doit contenir au moins 8 caracteres' });
+    }
+
+    const userId = await redis.get(`password_reset:${token}`);
+    if (!userId) {
+      return res.status(400).json({ error: 'Lien invalide ou expire' });
+    }
+
+    const passwordHash = await hashPassword(password);
+    await query(`UPDATE users SET password_hash = ? WHERE id = ?`, [passwordHash, userId]);
+
+    await redis.del(`password_reset:${token}`);
+    await redis.del(`refresh_token:${userId}`);
+
+    logger.info(`Password reset completed for user ${userId}`);
+    res.json({ success: true });
+  } catch (err) {
+    logger.error('Reset password error:', err);
+    res.status(500).json({ error: 'Erreur de reinitialisation du mot de passe' });
+  }
 }

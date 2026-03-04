@@ -319,12 +319,12 @@ export async function getInvites(req, res) {
 
 export async function createInvite(req, res) {
   try {
-    const { firstName, lastName, email, phone, role, expiresHours } = req.body;
+    const { email, role } = req.body;
     const inviteRole = role || 'promoter';
-    const inviteExpiresHours = parseInt(expiresHours, 10) || 48;
+    const inviteExpiresHours = 24 * 7;
 
-    if (!firstName || !lastName || !email) {
-      return res.status(400).json({ error: 'Missing required fields: firstName, lastName, email' });
+    if (!email) {
+      return res.status(400).json({ error: 'Missing required field: email' });
     }
 
     if (!['promoter', 'staff'].includes(inviteRole)) {
@@ -340,7 +340,7 @@ export async function createInvite(req, res) {
     await query(
       `INSERT INTO invites (email, first_name, last_name, phone, role, token, code, created_by, expires_at, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
-      [email, firstName, lastName, phone || null, inviteRole, token, code, adminId, expireDate]
+      [email, '', '', null, inviteRole, token, code, adminId, expireDate]
     );
 
     const creator = await query(
@@ -363,9 +363,9 @@ export async function createInvite(req, res) {
       success: true,
       invite: {
         email,
-        firstName,
-        lastName,
-        phone: phone || null,
+        firstName: '',
+        lastName: '',
+        phone: null,
         role: inviteRole,
         token,
         code,

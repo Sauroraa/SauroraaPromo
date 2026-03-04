@@ -15,9 +15,46 @@ export default function MissionsPage() {
         <p className="page-subtitle">Selectionnez une mission et envoyez vos preuves.</p>
       </div>
 
+      <div className="stats-grid dashboard-kpis">
+        <div className="metric-card metric-card-accent-indigo">
+          <span className="metric-label">Missions actives</span>
+          <strong className="metric-value">{list.length}</strong>
+          <span className="cell-muted">Disponibles maintenant</span>
+        </div>
+        <div className="metric-card">
+          <span className="metric-label">Type de missions</span>
+          <strong className="metric-value">{new Set(list.map((m) => m.action_type)).size || 0}</strong>
+          <span className="cell-muted">Actions differentes</span>
+        </div>
+        <div className="metric-card">
+          <span className="metric-label">Points max / preuve</span>
+          <strong className="metric-value">
+            {list.length ? Math.max(...list.map((m) => Number(m.points_per_proof || 0))) : 0}
+          </strong>
+          <span className="cell-muted">Potentiel de gain</span>
+        </div>
+        <div className="metric-card">
+          <span className="metric-label">Action rapide</span>
+          <Link to="/proofs" className="mission-cta" style={{ marginTop: '6px' }}>
+            Voir mes preuves →
+          </Link>
+        </div>
+      </div>
+
       {list.length === 0 ? (
         <section className="surface-card">
-          <p className="cell-muted">Aucune mission active pour le moment.</p>
+          <div className="empty-block">
+            <h3>Aucune mission active pour le moment</h3>
+            <p>Les missions apparaitront ici des qu'un staff/admin en publie une.</p>
+            <div className="mission-actions">
+              <Link to="/dashboard" className="ui-btn-ghost mission-link-btn">
+                Retour dashboard
+              </Link>
+              <Link to="/proofs" className="ui-btn-primary mission-link-btn">
+                Voir mes preuves
+              </Link>
+            </div>
+          </div>
         </section>
       ) : (
         <section className="mission-grid">

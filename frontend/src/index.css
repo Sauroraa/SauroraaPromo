@@ -808,6 +808,17 @@ body {
   text-decoration: none;
 }
 
+.empty-block h3 {
+  color: var(--text);
+  font-size: 19px;
+  margin-bottom: 6px;
+}
+
+.empty-block p {
+  color: var(--text-dim);
+  margin-bottom: 12px;
+}
+
 .mission-action-grid {
   margin-top: 8px;
   display: grid;

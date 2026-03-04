@@ -206,19 +206,40 @@ export async function deleteMissionAdmin(req, res) {
 
 export async function getAdminStats(req, res) {
   try {
-    const today = new Date().toISOString().split('T')[0];
+    const metric = async (sql, values = [], key = 'value') => {
+      try {
+        const rows = await query(sql, values);
+        return Number(rows?.[0]?.[key] ?? 0);
+      } catch (err) {
+        logger.warn(`Admin stats metric failed (${key}): ${err.message}`);
+        return 0;
+      }
+    };
 
-    const stats = await query(
-      `SELECT 
-        (SELECT COUNT(*) FROM proofs WHERE DATE(created_at) = CURDATE()) as proofs_today,
-        (SELECT SUM(points) FROM points_history WHERE DATE(created_at) = CURDATE()) as points_distributed_today,
-        (SELECT COUNT(*) FROM missions WHERE active = 1) as active_missions,
-        (SELECT COUNT(DISTINCT user_id) FROM proofs WHERE DATE(created_at) = CURDATE()) as active_promoters_today,
-        (SELECT COUNT(*) FROM users WHERE role = 'promoter') as total_promoters,
-        (SELECT COUNT(*) FROM proofs WHERE status = 'pending') as pending_proofs`
-    );
+    const [
+      proofsToday,
+      pointsDistributedToday,
+      activeMissions,
+      activePromotersToday,
+      totalPromoters,
+      pendingProofs
+    ] = await Promise.all([
+      metric(`SELECT COUNT(*) AS value FROM proofs WHERE DATE(created_at) = CURDATE()`),
+      metric(`SELECT COALESCE(SUM(points), 0) AS value FROM points_history WHERE DATE(created_at) = CURDATE()`),
+      metric(`SELECT COUNT(*) AS value FROM missions WHERE active = 1`),
+      metric(`SELECT COUNT(DISTINCT user_id) AS value FROM proofs WHERE DATE(created_at) = CURDATE()`),
+      metric(`SELECT COUNT(*) AS value FROM users WHERE role = 'promoter'`),
+      metric(`SELECT COUNT(*) AS value FROM proofs WHERE status = 'pending'`)
+    ]);
 
-    res.json(stats[0]);
+    res.json({
+      proofs_today: proofsToday,
+      points_distributed_today: pointsDistributedToday,
+      active_missions: activeMissions,
+      active_promoters_today: activePromotersToday,
+      total_promoters: totalPromoters,
+      pending_proofs: pendingProofs
+    });
   } catch (err) {
     logger.error('Error fetching admin stats:', err);
     res.status(500).json({ error: 'Failed to fetch stats' });

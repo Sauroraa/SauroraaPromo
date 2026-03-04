@@ -1,32 +1,18 @@
 import nodemailer from 'nodemailer';
 import logger from '../utils/logger.js';
 
-function boolFromEnv(value, fallback = false) {
-  if (value === undefined || value === null || value === '') return fallback;
-  return ['1', 'true', 'yes', 'on'].includes(String(value).toLowerCase());
-}
-
 const MAIL_HOST = process.env.MAIL_HOST || 'smtp.us.appsuite.cloud';
 const MAIL_PORT = parseInt(process.env.MAIL_PORT, 10) || 587;
-const MAIL_SECURE = boolFromEnv(process.env.MAIL_SECURE, MAIL_PORT === 465);
-const MAIL_REQUIRE_TLS = boolFromEnv(process.env.MAIL_REQUIRE_TLS, false);
-const MAIL_TLS_REJECT_UNAUTHORIZED = boolFromEnv(
-  process.env.MAIL_TLS_REJECT_UNAUTHORIZED,
-  true
-);
+const MAIL_SECURE = MAIL_PORT === 465;
 const MAIL_USER = process.env.MAIL_USER || 'contact@sauroraa.be';
 
 const transporter = nodemailer.createTransport({
   host: MAIL_HOST,
   port: MAIL_PORT,
   secure: MAIL_SECURE,
-  requireTLS: MAIL_REQUIRE_TLS,
   auth: {
     user: MAIL_USER,
     pass: process.env.MAIL_PASSWORD
-  },
-  tls: {
-    rejectUnauthorized: MAIL_TLS_REJECT_UNAUTHORIZED
   }
 });
 
@@ -37,7 +23,7 @@ const FRONTEND_URL = process.env.FRONTEND_URL || 'https://promoteam.sauroraa.be'
 transporter.verify().then(() => {
   logger.info(`SMTP connection verified (${MAIL_HOST}:${MAIL_PORT}, secure=${MAIL_SECURE})`);
 }).catch(err => {
-  logger.warn(`SMTP connection failed (${MAIL_HOST}:${MAIL_PORT}) — emails disabled: ${err.message}`);
+  logger.warn(`SMTP connection failed (${MAIL_HOST}:${MAIL_PORT}) - emails disabled: ${err.message}`);
 });
 
 async function send({ to, subject, html }) {
@@ -45,7 +31,9 @@ async function send({ to, subject, html }) {
     await transporter.sendMail({ from: FROM, to, subject, html });
     logger.info(`Email sent to ${to}: ${subject}`);
   } catch (err) {
-    logger.error(`Email failed to ${to}:`, err.message);
+    const code = err?.code ? ` code=${err.code}` : '';
+    const response = err?.response ? ` response=${err.response}` : '';
+    logger.error(`Email failed to ${to}:${code}${response} message=${err.message}`);
     throw err;
   }
 }

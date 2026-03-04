@@ -19,8 +19,12 @@ export async function createMission(data) {
 
     logger.info(`Mission created: ${result.insertId}`);
 
-    // Cache invalidation
-    await redis.del('missions:active');
+    // Cache invalidation (non-blocking)
+    try {
+      await redis.del('missions:active');
+    } catch (cacheErr) {
+      logger.warn(`Redis cache invalidation failed for missions: ${cacheErr.message}`);
+    }
 
     return result.insertId;
   } catch (err) {
@@ -31,9 +35,13 @@ export async function createMission(data) {
 
 export async function getActiveMissions() {
   try {
-    // Try cache first
-    const cached = await redis.get('missions:active');
-    if (cached) return JSON.parse(cached);
+    // Try cache first (non-blocking if Redis has issues)
+    try {
+      const cached = await redis.get('missions:active');
+      if (cached) return JSON.parse(cached);
+    } catch (cacheErr) {
+      logger.warn(`Redis cache read failed for active missions: ${cacheErr.message}`);
+    }
 
     const result = await query(
       `SELECT * FROM missions 
@@ -41,8 +49,12 @@ export async function getActiveMissions() {
        ORDER BY created_at DESC`
     );
 
-    // Cache for 30 minutes
-    await redis.setex('missions:active', 1800, JSON.stringify(result));
+    // Cache for 30 minutes (non-blocking)
+    try {
+      await redis.setex('missions:active', 1800, JSON.stringify(result));
+    } catch (cacheErr) {
+      logger.warn(`Redis cache write failed for active missions: ${cacheErr.message}`);
+    }
 
     return result;
   } catch (err) {
@@ -102,8 +114,12 @@ export async function updateMission(missionId, data) {
 
     logger.info(`Mission ${missionId} updated`);
 
-    // Cache invalidation
-    await redis.del('missions:active');
+    // Cache invalidation (non-blocking)
+    try {
+      await redis.del('missions:active');
+    } catch (cacheErr) {
+      logger.warn(`Redis cache invalidation failed for missions: ${cacheErr.message}`);
+    }
 
     return true;
   } catch (err) {
@@ -121,8 +137,12 @@ export async function deleteMission(missionId) {
 
     logger.info(`Mission ${missionId} deleted`);
 
-    // Cache invalidation
-    await redis.del('missions:active');
+    // Cache invalidation (non-blocking)
+    try {
+      await redis.del('missions:active');
+    } catch (cacheErr) {
+      logger.warn(`Redis cache invalidation failed for missions: ${cacheErr.message}`);
+    }
 
     return true;
   } catch (err) {

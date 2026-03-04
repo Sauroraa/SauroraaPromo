@@ -4,9 +4,13 @@ import logger from '../utils/logger.js';
 
 export async function getUserStats(userId) {
   try {
-    // Try cache first
-    const cached = await redis.get(`user_stats:${userId}`);
-    if (cached) return JSON.parse(cached);
+    // Try cache first (non-blocking if Redis has issues)
+    try {
+      const cached = await redis.get(`user_stats:${userId}`);
+      if (cached) return JSON.parse(cached);
+    } catch (cacheErr) {
+      logger.warn(`Redis cache read failed for user stats ${userId}: ${cacheErr.message}`);
+    }
 
     const result = await query(
       `SELECT 
@@ -33,8 +37,12 @@ export async function getUserStats(userId) {
 
     stats.rank = ranking[0].rank;
 
-    // Cache for 1 hour
-    await redis.setex(`user_stats:${userId}`, 3600, JSON.stringify(stats));
+    // Cache for 1 hour (non-blocking)
+    try {
+      await redis.setex(`user_stats:${userId}`, 3600, JSON.stringify(stats));
+    } catch (cacheErr) {
+      logger.warn(`Redis cache write failed for user stats ${userId}: ${cacheErr.message}`);
+    }
 
     return stats;
   } catch (err) {
@@ -45,8 +53,12 @@ export async function getUserStats(userId) {
 
 export async function getLeaderboard(limit = 20, offset = 0) {
   try {
-    const cached = await redis.get(`leaderboard:${limit}:${offset}`);
-    if (cached) return JSON.parse(cached);
+    try {
+      const cached = await redis.get(`leaderboard:${limit}:${offset}`);
+      if (cached) return JSON.parse(cached);
+    } catch (cacheErr) {
+      logger.warn(`Redis cache read failed for leaderboard ${limit}:${offset}: ${cacheErr.message}`);
+    }
 
     const result = await query(
       `SELECT 
@@ -70,8 +82,12 @@ export async function getLeaderboard(limit = 20, offset = 0) {
       rank: offset + index + 1
     }));
 
-    // Cache for 30 minutes
-    await redis.setex(`leaderboard:${limit}:${offset}`, 1800, JSON.stringify(leaderboard));
+    // Cache for 30 minutes (non-blocking)
+    try {
+      await redis.setex(`leaderboard:${limit}:${offset}`, 1800, JSON.stringify(leaderboard));
+    } catch (cacheErr) {
+      logger.warn(`Redis cache write failed for leaderboard ${limit}:${offset}: ${cacheErr.message}`);
+    }
 
     return leaderboard;
   } catch (err) {

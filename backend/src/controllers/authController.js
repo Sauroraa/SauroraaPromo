@@ -7,6 +7,31 @@ import { sendWelcomeEmail } from '../services/emailService.js';
 import { sendPasswordResetEmail } from '../services/emailService.js';
 import { randomBytes } from 'crypto';
 
+async function cacheSetEx(key, ttl, value) {
+  try {
+    await redis.setEx(key, ttl, value);
+  } catch (err) {
+    logger.warn(`Redis setEx failed for ${key}: ${err.message}`);
+  }
+}
+
+async function cacheGet(key) {
+  try {
+    return await redis.get(key);
+  } catch (err) {
+    logger.warn(`Redis get failed for ${key}: ${err.message}`);
+    return null;
+  }
+}
+
+async function cacheDel(key) {
+  try {
+    await redis.del(key);
+  } catch (err) {
+    logger.warn(`Redis del failed for ${key}: ${err.message}`);
+  }
+}
+
 async function getValidInvite(tokenOrCode) {
   const inviteRows = await query(
     `SELECT *
@@ -119,7 +144,7 @@ export async function register(req, res) {
     const accessToken = generateToken(userId, 'promoter');
     const refreshTokenStr = generateRefreshToken(userId);
 
-    await redis.setEx(`refresh_token:${userId}`, 7 * 24 * 60 * 60, refreshTokenStr);
+    await cacheSetEx(`refresh_token:${userId}`, 7 * 24 * 60 * 60, refreshTokenStr);
 
     res.status(201).json({
       success: true,
@@ -166,7 +191,7 @@ export async function login(req, res) {
     const accessToken = generateToken(user.id, user.role);
     const refreshTokenStr = generateRefreshToken(user.id);
 
-    await redis.setEx(`refresh_token:${user.id}`, 7 * 24 * 60 * 60, refreshTokenStr);
+    await cacheSetEx(`refresh_token:${user.id}`, 7 * 24 * 60 * 60, refreshTokenStr);
 
     res.json({
       success: true,
@@ -191,7 +216,7 @@ export async function login(req, res) {
 export async function logout(req, res) {
   try {
     const userId = req.user.userId;
-    await redis.del(`refresh_token:${userId}`);
+    await cacheDel(`refresh_token:${userId}`);
     logger.info(`User logged out: ${userId}`);
     res.json({ success: true });
   } catch (err) {
@@ -247,7 +272,7 @@ export async function refreshToken(req, res) {
     }
 
     const userId = decoded.userId;
-    const storedToken = await redis.get(`refresh_token:${userId}`);
+    const storedToken = await cacheGet(`refresh_token:${userId}`);
 
     if (!storedToken || storedToken !== token) {
       logger.warn(`Invalid refresh token attempt for user ${userId}`);
@@ -262,7 +287,7 @@ export async function refreshToken(req, res) {
     const newAccessToken = generateToken(userId, userRows[0].role);
     const newRefreshToken = generateRefreshToken(userId);
 
-    await redis.setEx(`refresh_token:${userId}`, 7 * 24 * 60 * 60, newRefreshToken);
+    await cacheSetEx(`refresh_token:${userId}`, 7 * 24 * 60 * 60, newRefreshToken);
 
     res.json({
       accessToken: newAccessToken,
@@ -319,7 +344,7 @@ export async function forgotPassword(req, res) {
 
     const user = users[0];
     const token = randomBytes(32).toString('hex');
-    await redis.setEx(`password_reset:${token}`, 60 * 60, String(user.id));
+    await cacheSetEx(`password_reset:${token}`, 60 * 60, String(user.id));
 
     sendPasswordResetEmail({
       to: user.email,
@@ -345,7 +370,7 @@ export async function resetPassword(req, res) {
       return res.status(400).json({ error: 'Le mot de passe doit contenir au moins 8 caracteres' });
     }
 
-    const userId = await redis.get(`password_reset:${token}`);
+    const userId = await cacheGet(`password_reset:${token}`);
     if (!userId) {
       return res.status(400).json({ error: 'Lien invalide ou expire' });
     }
@@ -353,8 +378,8 @@ export async function resetPassword(req, res) {
     const passwordHash = await hashPassword(password);
     await query(`UPDATE users SET password_hash = ? WHERE id = ?`, [passwordHash, userId]);
 
-    await redis.del(`password_reset:${token}`);
-    await redis.del(`refresh_token:${userId}`);
+    await cacheDel(`password_reset:${token}`);
+    await cacheDel(`refresh_token:${userId}`);
 
     logger.info(`Password reset completed for user ${userId}`);
     res.json({ success: true });

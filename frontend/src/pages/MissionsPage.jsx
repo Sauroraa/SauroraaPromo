@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useMissions } from '../hooks/useQueries';
 
 export default function MissionsPage() {
-  const { data: missions, isLoading } = useMissions();
+  const { data: missions, isLoading, isError } = useMissions();
   const list = missions || [];
 
   if (isLoading) return <div className="page-loading">Chargement...</div>;
@@ -41,7 +41,14 @@ export default function MissionsPage() {
         </div>
       </div>
 
-      {list.length === 0 ? (
+      {isError ? (
+        <section className="surface-card">
+          <div className="empty-block">
+            <h3>Impossible de charger les missions</h3>
+            <p>Le serveur est temporairement indisponible. Reessayez dans quelques secondes.</p>
+          </div>
+        </section>
+      ) : list.length === 0 ? (
         <section className="surface-card">
           <div className="empty-block">
             <h3>Aucune mission active pour le moment</h3>

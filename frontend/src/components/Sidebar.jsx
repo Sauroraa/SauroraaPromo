@@ -6,14 +6,21 @@ export default function Sidebar() {
   const { user } = useAuthStore();
   const location = useLocation();
 
-  const isActive = (path) => location.pathname === path;
+  const isActive = (path) => location.pathname === path || location.pathname.startsWith(`${path}/`);
 
   const promoterLinks = [
     { path: '/dashboard', label: 'Dashboard' },
     { path: '/missions', label: 'Missions' },
     { path: '/proofs', label: 'Mes preuves' },
-    { path: '/leaderboard', label: 'Classement' },
+    { path: '/leaderboard', label: 'Leaderboard' },
     { path: '/profile', label: 'Profil' }
+  ];
+
+  const staffLinks = [
+    { path: '/admin', label: 'Dashboard' },
+    { path: '/admin/proofs', label: 'Preuves' },
+    { path: '/admin/missions', label: 'Missions' },
+    { path: '/leaderboard', label: 'Leaderboard' }
   ];
 
   const adminLinks = [
@@ -23,19 +30,23 @@ export default function Sidebar() {
     { path: '/admin/users', label: 'Utilisateurs' }
   ];
 
-  const links = user?.role === 'admin' ? adminLinks : promoterLinks;
+  const links = user?.role === 'admin'
+    ? adminLinks
+    : user?.role === 'staff'
+      ? staffLinks
+      : promoterLinks;
 
   return (
-    <aside className="w-64 bg-slate-800 border-r border-slate-700 fixed left-0 top-16 bottom-0 overflow-y-auto">
-      <nav className="p-4 space-y-2">
+    <aside className="sidebar">
+      <nav className="sidebar-nav">
         {links.map((link) => (
           <Link
             key={link.path}
             to={link.path}
-            className={`block px-4 py-3 rounded-lg transition ${
+            className={`sidebar-link ${
               isActive(link.path)
-                ? 'bg-blue-600 text-white'
-                : 'text-slate-400 hover:bg-slate-700'
+                ? 'sidebar-link-active'
+                : 'sidebar-link-idle'
             }`}
           >
             {link.label}

@@ -29,22 +29,24 @@ const queryClient = new QueryClient({
   }
 });
 
-function ProtectedRoute({ children, adminOnly = false }) {
+function ProtectedRoute({ children, allowedRoles = [] }) {
   const { isLoggedIn, user } = useAuthStore();
 
   if (!isLoggedIn) return <Navigate to="/login" replace />;
-  if (adminOnly && user?.role !== 'admin') return <Navigate to="/dashboard" replace />;
+  if (allowedRoles.length > 0 && !allowedRoles.includes(user?.role)) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   return (
-    <>
+    <div className="app-shell">
       <Header />
-      <div className="flex">
+      <div className="app-body">
         <Sidebar />
-        <main className="flex-1 ml-64 mt-16 p-6 min-h-screen">
+        <main className="app-main">
           {children}
         </main>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -69,11 +71,11 @@ export default function App() {
           <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
           <Route path="/leaderboard" element={<ProtectedRoute><LeaderboardPage /></ProtectedRoute>} />
 
-          {/* Admin Routes */}
-          <Route path="/admin" element={<ProtectedRoute adminOnly><AdminDashboardPage /></ProtectedRoute>} />
-          <Route path="/admin/proofs" element={<ProtectedRoute adminOnly><AdminProofsPage /></ProtectedRoute>} />
-          <Route path="/admin/missions" element={<ProtectedRoute adminOnly><AdminMissionsPage /></ProtectedRoute>} />
-          <Route path="/admin/users" element={<ProtectedRoute adminOnly><AdminUsersPage /></ProtectedRoute>} />
+          {/* Staff + Admin Routes */}
+          <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin', 'staff']}><AdminDashboardPage /></ProtectedRoute>} />
+          <Route path="/admin/proofs" element={<ProtectedRoute allowedRoles={['admin', 'staff']}><AdminProofsPage /></ProtectedRoute>} />
+          <Route path="/admin/missions" element={<ProtectedRoute allowedRoles={['admin', 'staff']}><AdminMissionsPage /></ProtectedRoute>} />
+          <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['admin']}><AdminUsersPage /></ProtectedRoute>} />
 
           {/* Redirects */}
           <Route path="/" element={<LandingRoute />} />

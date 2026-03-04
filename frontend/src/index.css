@@ -563,6 +563,30 @@ body {
   background: #0f172a;
   color: var(--text);
   padding: 0 8px;
+  width: 100%;
+}
+
+.admin-user-actions {
+  display: grid;
+  gap: 8px;
+  min-width: 170px;
+}
+
+.points-editor {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px;
+  align-items: center;
+}
+
+.points-editor .ui-input {
+  height: 32px;
+  padding: 0 10px;
+}
+
+.points-editor .ui-btn-ghost {
+  height: 32px;
+  padding: 0 10px;
 }
 
 .invite-form {

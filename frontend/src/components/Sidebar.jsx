@@ -20,8 +20,7 @@ export default function Sidebar() {
     { path: '/admin', label: 'Dashboard' },
     { path: '/admin/proofs', label: 'Preuves' },
     { path: '/admin/missions', label: 'Missions' },
-    { path: '/admin/users', label: 'Utilisateurs' },
-    { path: '/admin/stats', label: 'Statistiques' }
+    { path: '/admin/users', label: 'Utilisateurs' }
   ];
 
   const links = user?.role === 'admin' ? adminLinks : promoterLinks;

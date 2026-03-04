@@ -4,6 +4,7 @@ import {
   getProofForReview,
   approveProofAdmin,
   rejectProofAdmin,
+  getAllMissionsAdmin,
   createMissionAdmin,
   updateMissionAdmin,
   deleteMissionAdmin,
@@ -18,7 +19,7 @@ import { authMiddleware, adminMiddleware } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// Middleware
+// All admin routes require auth + admin role
 router.use(authMiddleware, adminMiddleware);
 
 // Proofs
@@ -28,6 +29,7 @@ router.post('/proofs/:proofId/approve', approveProofAdmin);
 router.post('/proofs/:proofId/reject', rejectProofAdmin);
 
 // Missions
+router.get('/missions', getAllMissionsAdmin);
 router.post('/missions', createMissionAdmin);
 router.patch('/missions/:missionId', updateMissionAdmin);
 router.delete('/missions/:missionId', deleteMissionAdmin);

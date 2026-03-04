@@ -1,4 +1,4 @@
-import api from '../lib/api';
+import api from './api';
 
 export const authApi = {
   register: (data) => api.post('/auth/register', data),
@@ -30,8 +30,13 @@ export const usersApi = {
 };
 
 export const adminApi = {
-  getProofs: (status, limit = 50, offset = 0) =>
-    api.get(`/admin/proofs?status=${status}&limit=${limit}&offset=${offset}`),
+  getProofs: (status, limit = 50, offset = 0) => {
+    const params = new URLSearchParams({ limit, offset });
+    if (status) params.set('status', status);
+    return api.get(`/admin/proofs?${params}`);
+  },
+  getMissions: (limit = 100, offset = 0) =>
+    api.get(`/admin/missions?limit=${limit}&offset=${offset}`),
   getProofDetail: (id) => api.get(`/admin/proofs/${id}`),
   approveProof: (id) => api.post(`/admin/proofs/${id}/approve`),
   rejectProof: (id, reason) => api.post(`/admin/proofs/${id}/reject`, { reason }),

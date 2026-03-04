@@ -1,0 +1,161 @@
+services:
+
+  # ─── Database ───────────────────────────────────────────────────────────────
+  mariadb:
+    image: mariadb:11
+    container_name: promoteam-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE:      promoteam
+      MYSQL_USER:          promoteam
+      MYSQL_PASSWORD:      ${MYSQL_PASSWORD}
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./database/migrations:/docker-entrypoint-initdb.d:ro
+    # No ports exposed to host — only reachable inside Docker network
+    networks:
+      - promoteam-network
+    healthcheck:
+      test: ["CMD", "mariadb-admin", "ping", "-h", "localhost", "-u", "promoteam", "-p${MYSQL_PASSWORD}"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  # ─── Cache ──────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: promoteam-cache
+    restart: unless-stopped
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD}
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --save 900 1
+      --save 300 10
+    volumes:
+      - redis_data:/data
+    # No ports exposed to host
+    networks:
+      - promoteam-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ─── Backend API ─────────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    image: promoteam-backend:latest
+    container_name: promoteam-backend
+    restart: unless-stopped
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV:      production
+      PORT:          5000
+      # Database
+      DB_HOST:       mariadb
+      DB_PORT:       3306
+      DB_USER:       promoteam
+      DB_PASSWORD:   ${MYSQL_PASSWORD}
+      DB_NAME:       promoteam
+      # Redis
+      REDIS_URL:     redis://:${REDIS_PASSWORD}@redis:6379
+      # Auth
+      JWT_SECRET:    ${JWT_SECRET}
+      # Mail
+      MAIL_HOST:     ${MAIL_HOST}
+      MAIL_PORT:     ${MAIL_PORT}
+      MAIL_USER:     ${MAIL_USER}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
+      MAIL_FROM:     ${MAIL_FROM}
+      # App
+      FRONTEND_URL:  ${FRONTEND_URL}
+    volumes:
+      - uploads:/app/uploads
+    # No external port — only nginx talks to backend
+    networks:
+      - promoteam-network
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ─── Frontend (built React SPA served by nginx:alpine) ───────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+      args:
+        VITE_API_URL: ${FRONTEND_URL}/api
+        VITE_APP_URL: ${FRONTEND_URL}
+    image: promoteam-frontend:latest
+    container_name: promoteam-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    # No external port — only the main nginx proxies to this
+    networks:
+      - promoteam-network
+
+  # ─── Nginx reverse proxy (SSL termination) ───────────────────────────────────
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: promoteam-nginx
+    restart: unless-stopped
+    depends_on:
+      - backend
+      - frontend
+    volumes:
+      - ./nginx/conf/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf/promoteam.conf:/etc/nginx/conf.d/promoteam.conf:ro
+      - uploads:/uploads:ro
+      - certbot_conf:/etc/letsencrypt:ro
+      - certbot_www:/var/www/certbot:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - promoteam-network
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ─── Certbot (SSL auto-renewal) ───────────────────────────────────────────────
+  certbot:
+    image: certbot/certbot:latest
+    container_name: promoteam-certbot
+    volumes:
+      - certbot_conf:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
+    # Renew every 12h — certbot only acts when cert is near expiry
+    entrypoint: >
+      /bin/sh -c "trap exit TERM;
+      while :; do
+        certbot renew --webroot -w /var/www/certbot --quiet;
+        sleep 12h & wait $${!};
+      done"
+
+volumes:
+  db_data:
+  redis_data:
+  uploads:
+  certbot_conf:
+  certbot_www:
+
+networks:
+  promoteam-network:
+    driver: bridge

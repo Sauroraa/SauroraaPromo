@@ -102,6 +102,20 @@ export async function rejectProofAdmin(req, res) {
 
 // MISSIONS
 
+export async function getAllMissionsAdmin(req, res) {
+  try {
+    const limit = Math.min(parseInt(req.query.limit) || 100, 200);
+    const offset = parseInt(req.query.offset) || 0;
+
+    const missions = await getAllMissions(limit, offset);
+
+    res.json({ missions, limit, offset });
+  } catch (err) {
+    logger.error('Error fetching all missions:', err);
+    res.status(500).json({ error: 'Failed to fetch missions' });
+  }
+}
+
 export async function createMissionAdmin(req, res) {
   try {
     const { title, description, action_type, points_per_proof, max_per_user, deadline } = req.body;

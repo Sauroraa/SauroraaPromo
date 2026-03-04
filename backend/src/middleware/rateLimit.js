@@ -1,35 +1,40 @@
 import rateLimit from 'express-rate-limit';
-import RedisStore from 'rate-limit-redis';
-import redis from '../config/redis.js';
 
-// Limiter global
+// Global rate limit — 100 req / 15 min per IP
 export const globalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
+  windowMs: 15 * 60 * 1000,
   max: 100,
-  message: 'Too many requests, please try again later.'
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Trop de requêtes, réessayez dans quelques minutes.' }
 });
 
-// Limiter login
+// Login — 5 attempts / 15 min (only counts failures)
 export const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
-  message: 'Too many login attempts, please try again later.',
-  skipSuccessfulRequests: true
+  skipSuccessfulRequests: true,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Trop de tentatives de connexion. Réessayez dans 15 minutes.' }
 });
 
-// Limiter upload
+// Upload — 50 soumissions / 24h
 export const uploadLimiter = rateLimit({
-  windowMs: 24 * 60 * 60 * 1000, // 24h
-  max: 50, // 50 uploads per day
-  message: 'Daily upload limit exceeded',
-  skipSuccessfulRequests: false
+  windowMs: 24 * 60 * 60 * 1000,
+  max: 50,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Limite d\'uploads journalière atteinte.' }
 });
 
-// Limiter API proof submission
+// Proof submission — 10 / heure
 export const proofLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 10, // 10 proofs per hour
-  message: 'Proof submission rate limit exceeded'
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Limite de soumissions atteinte. Réessayez dans une heure.' }
 });
 
 export default globalLimiter;

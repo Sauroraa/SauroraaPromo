@@ -1,28 +1,26 @@
 import { query } from '../config/db.js';
 import { hashPassword, comparePassword } from '../utils/hash.js';
-import { generateToken, generateRefreshToken } from '../utils/jwt.js';
+import { generateToken, generateRefreshToken, verifyToken } from '../utils/jwt.js';
 import logger from '../utils/logger.js';
 import redis from '../config/redis.js';
+import { sendWelcomeEmail } from '../services/emailService.js';
 
 export async function register(req, res) {
   try {
     const { firstName, lastName, instaUsername, email, password, inviteCode } = req.body;
 
-    // Validation
     if (!firstName || !lastName || !instaUsername || !email || !password) {
-      return res.status(400).json({ error: 'Missing required fields' });
+      return res.status(400).json({ error: 'Champs requis manquants' });
     }
 
-    // Check invite code if not admin
-    if (req.body.role !== 'admin') {
-      const invite = await query(
-        `SELECT * FROM invites WHERE code = ? AND used_by IS NULL AND expires_at > NOW()`,
-        [inviteCode]
-      );
+    // Invite code always required — admins are created via seed script only
+    const invite = await query(
+      `SELECT * FROM invites WHERE code = ? AND used_by IS NULL AND expires_at > NOW()`,
+      [inviteCode]
+    );
 
-      if (invite.length === 0) {
-        return res.status(403).json({ error: 'Invalid or expired invite code' });
-      }
+    if (invite.length === 0) {
+      return res.status(403).json({ error: 'Code d\'invitation invalide ou expiré' });
     }
 
     // Check if user exists
@@ -32,13 +30,11 @@ export async function register(req, res) {
     );
 
     if (existingUser.length > 0) {
-      return res.status(409).json({ error: 'User already exists' });
+      return res.status(409).json({ error: 'Email ou pseudo Instagram déjà utilisé' });
     }
 
-    // Hash password
     const passwordHash = await hashPassword(password);
 
-    // Create user
     const result = await query(
       `INSERT INTO users (first_name, last_name, insta_username, email, password_hash, role, points_total, status, created_at)
        VALUES (?, ?, ?, ?, ?, 'promoter', 0, 'active', NOW())`,
@@ -48,31 +44,32 @@ export async function register(req, res) {
     const userId = result.insertId;
 
     // Mark invite as used
-    if (inviteCode) {
-      await query(
-        `UPDATE invites SET used_by = ? WHERE code = ?`,
-        [userId, inviteCode]
-      );
-    }
+    await query(
+      `UPDATE invites SET used_by = ? WHERE code = ?`,
+      [userId, inviteCode]
+    );
 
     logger.info(`New user registered: ${userId} (${email})`);
 
-    // Generate tokens
-    const accessToken = generateToken(userId, 'promoter');
-    const refreshToken = generateRefreshToken(userId);
+    // Send welcome email (non-blocking)
+    sendWelcomeEmail({ email, firstName }).catch(err =>
+      logger.warn('Welcome email failed:', err.message)
+    );
 
-    // Store refresh token in Redis
-    await redis.setex(`refresh_token:${userId}`, 7 * 24 * 60 * 60, refreshToken);
+    const accessToken = generateToken(userId, 'promoter');
+    const refreshTokenStr = generateRefreshToken(userId);
+
+    await redis.setEx(`refresh_token:${userId}`, 7 * 24 * 60 * 60, refreshTokenStr);
 
     res.status(201).json({
       success: true,
-      user: { id: userId, email, instaUsername, firstName, lastName },
+      user: { id: userId, email, instaUsername, firstName, lastName, role: 'promoter' },
       accessToken,
-      refreshToken
+      refreshToken: refreshTokenStr
     });
   } catch (err) {
     logger.error('Registration error:', err);
-    res.status(500).json({ error: 'Registration failed' });
+    res.status(500).json({ error: 'Erreur lors de l\'inscription' });
   }
 }
 
@@ -81,43 +78,35 @@ export async function login(req, res) {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password required' });
+      return res.status(400).json({ error: 'Email et mot de passe requis' });
     }
 
-    // Find user
     const result = await query(
-      `SELECT * FROM users WHERE email = ?`,
+      `SELECT * FROM users WHERE email = ? AND status = 'active'`,
       [email]
     );
 
     if (result.length === 0) {
-      logger.warn(`Login attempt for non-existent user: ${email}`);
-      return res.status(401).json({ error: 'Invalid credentials' });
+      logger.warn(`Login attempt for non-existent/suspended user: ${email}`);
+      return res.status(401).json({ error: 'Identifiants invalides' });
     }
 
     const user = result[0];
 
-    // Compare password
     const isValid = await comparePassword(password, user.password_hash);
     if (!isValid) {
       logger.warn(`Failed login for user: ${email}`);
-      return res.status(401).json({ error: 'Invalid credentials' });
+      return res.status(401).json({ error: 'Identifiants invalides' });
     }
 
-    // Update last login
-    await query(
-      `UPDATE users SET last_login = NOW() WHERE id = ?`,
-      [user.id]
-    );
+    await query(`UPDATE users SET last_login = NOW() WHERE id = ?`, [user.id]);
 
     logger.info(`User logged in: ${user.id} (${email})`);
 
-    // Generate tokens
     const accessToken = generateToken(user.id, user.role);
-    const refreshToken = generateRefreshToken(user.id);
+    const refreshTokenStr = generateRefreshToken(user.id);
 
-    // Store refresh token in Redis
-    await redis.setex(`refresh_token:${user.id}`, 7 * 24 * 60 * 60, refreshToken);
+    await redis.setEx(`refresh_token:${user.id}`, 7 * 24 * 60 * 60, refreshTokenStr);
 
     res.json({
       success: true,
@@ -131,11 +120,11 @@ export async function login(req, res) {
         pointsTotal: user.points_total
       },
       accessToken,
-      refreshToken
+      refreshToken: refreshTokenStr
     });
   } catch (err) {
     logger.error('Login error:', err);
-    res.status(500).json({ error: 'Login failed' });
+    res.status(500).json({ error: 'Erreur de connexion' });
   }
 }
 
@@ -147,20 +136,20 @@ export async function logout(req, res) {
     res.json({ success: true });
   } catch (err) {
     logger.error('Logout error:', err);
-    res.status(500).json({ error: 'Logout failed' });
+    res.status(500).json({ error: 'Erreur de déconnexion' });
   }
 }
 
 export async function getCurrentUser(req, res) {
   try {
     const result = await query(
-      `SELECT id, email, insta_username, first_name, last_name, role, points_total, created_at, last_login
+      `SELECT id, email, insta_username, first_name, last_name, role, points_total, status, created_at, last_login
        FROM users WHERE id = ?`,
       [req.user.userId]
     );
 
     if (result.length === 0) {
-      return res.status(404).json({ error: 'User not found' });
+      return res.status(404).json({ error: 'Utilisateur introuvable' });
     }
 
     const user = result[0];
@@ -172,41 +161,47 @@ export async function getCurrentUser(req, res) {
       lastName: user.last_name,
       role: user.role,
       pointsTotal: user.points_total,
+      status: user.status,
       createdAt: user.created_at,
       lastLogin: user.last_login
     });
   } catch (err) {
     logger.error('Get current user error:', err);
-    res.status(500).json({ error: 'Failed to fetch user' });
+    res.status(500).json({ error: 'Erreur de récupération du profil' });
   }
 }
 
 export async function refreshToken(req, res) {
   try {
-    const { refreshToken } = req.body;
+    const { refreshToken: token } = req.body;
 
-    if (!refreshToken) {
-      return res.status(400).json({ error: 'Refresh token required' });
+    if (!token) {
+      return res.status(400).json({ error: 'Refresh token requis' });
     }
 
-    const userId = req.user.userId;
+    // Decode the refresh token to get userId
+    const decoded = verifyToken(token);
+    if (!decoded || !decoded.userId) {
+      return res.status(401).json({ error: 'Refresh token invalide' });
+    }
+
+    const userId = decoded.userId;
     const storedToken = await redis.get(`refresh_token:${userId}`);
 
-    if (storedToken !== refreshToken) {
-      logger.warn(`Invalid refresh token for user ${userId}`);
-      return res.status(401).json({ error: 'Invalid refresh token' });
+    if (!storedToken || storedToken !== token) {
+      logger.warn(`Invalid refresh token attempt for user ${userId}`);
+      return res.status(401).json({ error: 'Refresh token invalide ou expiré' });
     }
 
-    // Get user to get role
-    const user = await query(
-      `SELECT role FROM users WHERE id = ?`,
-      [userId]
-    );
+    const userRows = await query(`SELECT id, role FROM users WHERE id = ? AND status = 'active'`, [userId]);
+    if (userRows.length === 0) {
+      return res.status(401).json({ error: 'Utilisateur introuvable ou suspendu' });
+    }
 
-    const newAccessToken = generateToken(userId, user[0].role);
+    const newAccessToken = generateToken(userId, userRows[0].role);
     const newRefreshToken = generateRefreshToken(userId);
 
-    await redis.setex(`refresh_token:${userId}`, 7 * 24 * 60 * 60, newRefreshToken);
+    await redis.setEx(`refresh_token:${userId}`, 7 * 24 * 60 * 60, newRefreshToken);
 
     res.json({
       accessToken: newAccessToken,
@@ -214,6 +209,6 @@ export async function refreshToken(req, res) {
     });
   } catch (err) {
     logger.error('Refresh token error:', err);
-    res.status(500).json({ error: 'Token refresh failed' });
+    res.status(500).json({ error: 'Erreur de renouvellement du token' });
   }
 }

@@ -25,7 +25,9 @@ dotenv.config();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
-app.set('trust proxy', 1);
+
+const trustProxy = process.env.TRUST_PROXY || '2';
+app.set('trust proxy', trustProxy === 'true' ? true : parseInt(trustProxy, 10) || 2);
 
 // Security
 app.use(helmet());

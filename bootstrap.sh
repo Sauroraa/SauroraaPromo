@@ -109,6 +109,7 @@ ok "Répertoires créés"
 
 # ─── 4. Clone du repo ─────────────────────────────────────────────────────────
 step "4/8 — Clonage du repository"
+git config --global --add safe.directory "$DEPLOY_DIR"
 if [ -d "$DEPLOY_DIR/.git" ]; then
   cd "$DEPLOY_DIR"
   git fetch --all

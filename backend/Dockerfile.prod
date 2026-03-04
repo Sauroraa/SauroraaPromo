@@ -2,7 +2,7 @@ FROM node:20-alpine AS deps
 WORKDIR /app
 COPY package*.json ./
 # Install only production dependencies
-RUN npm ci --omit=dev
+RUN npm install --omit=dev
 
 # ─── Final stage ─────────────────────────────────────────────────────────────
 FROM node:20-alpine
@@ -13,6 +13,7 @@ RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY src ./src
+COPY scripts ./scripts
 
 # Upload directory
 RUN mkdir -p /app/uploads && chown -R nodejs:nodejs /app

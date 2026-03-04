@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useAdminProofDetail, useAdminProofs, useApproveProof, useRejectProof } from '../hooks/useQueries';
 import toast from 'react-hot-toast';
 
@@ -36,11 +36,27 @@ export default function ProofReviewPanel() {
   const [showRejectModal, setShowRejectModal] = useState(false);
 
   const { data: listData, isLoading: listLoading } = useAdminProofs(status);
-  const { data: detail, isLoading: detailLoading } = useAdminProofDetail(selectedId);
+  const {
+    data: detail,
+    isLoading: detailLoading,
+    isError: detailError,
+    refetch: refetchDetail
+  } = useAdminProofDetail(selectedId);
   const { mutate: approveProof, isPending: isApproving } = useApproveProof();
   const { mutate: rejectProof, isPending: isRejecting } = useRejectProof();
 
-  const proofs = listData?.proofs || [];
+  const proofs = useMemo(() => listData?.proofs || [], [listData]);
+
+  useEffect(() => {
+    if (!proofs.length) {
+      setSelectedId(null);
+      return;
+    }
+    const exists = proofs.some((proof) => proof.id === selectedId);
+    if (!selectedId || !exists) {
+      setSelectedId(proofs[0].id);
+    }
+  }, [proofs, selectedId]);
 
   const approve = () => {
     if (!selectedId) return;
@@ -132,6 +148,13 @@ export default function ProofReviewPanel() {
             <p className="cell-muted">Selectionnez une preuve pour afficher le detail.</p>
           ) : detailLoading ? (
             <p className="cell-muted">Chargement detail...</p>
+          ) : detailError ? (
+            <div className="proof-detail-error">
+              <p className="cell-muted">Impossible de charger le detail de la preuve.</p>
+              <button type="button" className="ui-btn-ghost" onClick={() => refetchDetail()}>
+                Reessayer
+              </button>
+            </div>
           ) : !detail ? (
             <p className="cell-muted">Detail indisponible.</p>
           ) : (

@@ -113,14 +113,16 @@ export function useAdminStats() {
   return useQuery({
     queryKey: ['adminStats'],
     queryFn: () => queries.adminApi.getStats().then(r => r.data),
-    refetchInterval: 60 * 1000
+    refetchInterval: 60 * 1000,
+    retry: 1
   });
 }
 
 export function useAdminProofs(status, limit = 50, offset = 0) {
   return useQuery({
     queryKey: ['adminProofs', status, limit, offset],
-    queryFn: () => queries.adminApi.getProofs(status, limit, offset).then(r => r.data)
+    queryFn: () => queries.adminApi.getProofs(status, limit, offset).then(r => r.data),
+    retry: 1
   });
 }
 
@@ -128,7 +130,8 @@ export function useAdminProofDetail(id) {
   return useQuery({
     queryKey: ['adminProofDetail', id],
     queryFn: () => queries.adminApi.getProofDetail(id).then(r => r.data),
-    enabled: !!id
+    enabled: !!id,
+    retry: 1
   });
 }
 

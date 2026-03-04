@@ -45,23 +45,47 @@ export async function getProofForReview(req, res) {
   try {
     const proofId = req.params.proofId;
 
-    const proof = await query(
-      `SELECT p.*, u.id as user_id, u.insta_username, u.first_name, u.last_name, m.title, m.points_per_proof
-       FROM proofs p
-       JOIN users u ON p.user_id = u.id
-       JOIN missions m ON p.mission_id = m.id
-       WHERE p.id = ?`,
-      [proofId]
-    );
+    let proof;
+    try {
+      proof = await query(
+        `SELECT p.*, u.id as user_id, u.insta_username, u.first_name, u.last_name, m.title, m.points_per_proof
+         FROM proofs p
+         JOIN users u ON p.user_id = u.id
+         JOIN missions m ON p.mission_id = m.id
+         WHERE p.id = ?`,
+        [proofId]
+      );
+    } catch (err) {
+      if (err?.code !== 'ER_BAD_FIELD_ERROR') throw err;
+      logger.warn(`Falling back proof detail query for proof ${proofId}: ${err.message}`);
+      proof = await query(
+        `SELECT p.*, u.id as user_id, u.insta_username, m.title, 0 as points_per_proof
+         FROM proofs p
+         JOIN users u ON p.user_id = u.id
+         JOIN missions m ON p.mission_id = m.id
+         WHERE p.id = ?`,
+        [proofId]
+      );
+    }
 
     if (proof.length === 0) {
       return res.status(404).json({ error: 'Proof not found' });
     }
 
-    const images = await query(
-      `SELECT id, image_path, created_at FROM proof_images WHERE proof_id = ? ORDER BY created_at ASC`,
-      [proofId]
-    );
+    let images;
+    try {
+      images = await query(
+        `SELECT id, image_path, created_at FROM proof_images WHERE proof_id = ? ORDER BY created_at ASC`,
+        [proofId]
+      );
+    } catch (err) {
+      if (err?.code !== 'ER_BAD_FIELD_ERROR') throw err;
+      logger.warn(`Falling back proof images query for proof ${proofId}: ${err.message}`);
+      images = await query(
+        `SELECT id, image_path, NULL as created_at FROM proof_images WHERE proof_id = ? ORDER BY id ASC`,
+        [proofId]
+      );
+    }
 
     res.json({
       ...proof[0],

@@ -989,6 +989,13 @@ body {
   gap: 8px;
 }
 
+.proof-detail-error {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+}
+
 .proof-admin-image {
   width: 100%;
   aspect-ratio: 4 / 3;

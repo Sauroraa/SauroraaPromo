@@ -19,7 +19,7 @@ const ACTION_OPTIONS = [
 const EMPTY_FORM = {
   title: '',
   description: '',
-  action_type: 'like',
+  action_types: ['like'],
   points_per_proof: 1,
   max_per_user: 10,
   deadline: '',
@@ -30,7 +30,7 @@ function normalizeMissionToForm(mission) {
   return {
     title: mission.title || '',
     description: mission.description || '',
-    action_type: mission.action_type || 'like',
+    action_types: mission.action_type ? [mission.action_type] : ['like'],
     points_per_proof: mission.points_per_proof || 1,
     max_per_user: mission.max_per_user || 10,
     deadline: mission.deadline ? new Date(mission.deadline).toISOString().slice(0, 16) : '',
@@ -69,8 +69,17 @@ export default function AdminMissionsPage() {
 
   const submit = (e) => {
     e.preventDefault();
+    const selectedActions = (form.action_types || []).filter(Boolean);
+
+    if (selectedActions.length === 0) {
+      toast.error('Selectionne au moins une action');
+      return;
+    }
+
     const payload = {
       ...form,
+      action_type: selectedActions[0],
+      action_types: selectedActions,
       points_per_proof: Number(form.points_per_proof) || 1,
       max_per_user: Number(form.max_per_user) || 1
     };
@@ -90,8 +99,9 @@ export default function AdminMissionsPage() {
     }
 
     createMission(payload, {
-      onSuccess: () => {
-        toast.success('Mission creee');
+      onSuccess: (res) => {
+        const count = res?.data?.createdCount || 1;
+        toast.success(count > 1 ? `${count} missions creees` : 'Mission creee');
         resetForm();
       },
       onError: (err) => toast.error(err.response?.data?.error || 'Erreur de creation')
@@ -101,6 +111,15 @@ export default function AdminMissionsPage() {
   const startEdit = (mission) => {
     setEditingId(mission.id);
     setForm(normalizeMissionToForm(mission));
+  };
+
+  const toggleAction = (action) => {
+    setForm((prev) => {
+      const current = prev.action_types || [];
+      const has = current.includes(action);
+      const next = has ? current.filter((a) => a !== action) : [...current, action];
+      return { ...prev, action_types: next };
+    });
   };
 
   const removeMission = (missionId) => {
@@ -158,18 +177,43 @@ export default function AdminMissionsPage() {
               onChange={(e) => setForm((s) => ({ ...s, description: e.target.value }))}
             />
 
+            <div>
+              <label className="login-label">Actions a demander</label>
+              <p className="cell-muted">Tu peux en choisir plusieurs. Le systeme cree une mission par action en un seul envoi.</p>
+              <div className="mission-action-grid">
+                {ACTION_OPTIONS.map((opt) => {
+                  const selected = (form.action_types || []).includes(opt.value);
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      className={selected ? 'mission-action-chip mission-action-chip-active' : 'mission-action-chip'}
+                      onClick={() => toggleAction(opt.value)}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="mission-actions" style={{ marginTop: 8 }}>
+                <button
+                  type="button"
+                  className="ui-btn-ghost"
+                  onClick={() => setForm((s) => ({ ...s, action_types: ACTION_OPTIONS.map((a) => a.value) }))}
+                >
+                  Tout selectionner
+                </button>
+                <button
+                  type="button"
+                  className="ui-btn-ghost"
+                  onClick={() => setForm((s) => ({ ...s, action_types: ['like'] }))}
+                >
+                  Reinitialiser
+                </button>
+              </div>
+            </div>
+
             <div className="form-grid-2">
-              <select
-                className="ui-select"
-                value={form.action_type}
-                onChange={(e) => setForm((s) => ({ ...s, action_type: e.target.value }))}
-              >
-                {ACTION_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
               <input
                 className="ui-input"
                 type="number"

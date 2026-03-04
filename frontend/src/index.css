@@ -781,6 +781,29 @@ body {
   gap: 8px;
 }
 
+.mission-action-grid {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.mission-action-chip {
+  border: 1px solid #334155;
+  background: #0f172a;
+  color: #cbd5e1;
+  border-radius: 10px;
+  height: 36px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.mission-action-chip-active {
+  border-color: rgba(99, 102, 241, 0.7);
+  background: rgba(99, 102, 241, 0.18);
+  color: #ffffff;
+}
+
 .mission-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -968,6 +991,10 @@ body {
   .proof-grid,
   .proof-admin-images {
     grid-template-columns: 1fr;
+  }
+
+  .mission-action-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

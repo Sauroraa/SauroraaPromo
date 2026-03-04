@@ -120,26 +120,50 @@ export async function getAllMissionsAdmin(req, res) {
 
 export async function createMissionAdmin(req, res) {
   try {
-    const { title, description, action_type, points_per_proof, max_per_user, deadline } = req.body;
+    const { title, description, action_type, action_types, points_per_proof, max_per_user, deadline } = req.body;
 
-    if (!title || !action_type || !points_per_proof) {
+    const allowedActions = ['like', 'comment', 'share', 'story', 'post', 'follow'];
+    const selectedActions = Array.isArray(action_types) && action_types.length > 0
+      ? action_types
+      : (action_type ? [action_type] : []);
+
+    const normalizedActions = [...new Set(selectedActions)]
+      .map((a) => String(a).toLowerCase().trim())
+      .filter((a) => allowedActions.includes(a));
+
+    if (!title || normalizedActions.length === 0 || !points_per_proof) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    const missionId = await createMission({
-      title,
-      description,
-      action_type,
-      points_per_proof,
-      max_per_user: max_per_user || 10,
-      deadline
-    });
+    const normalizeDeadline = (value) => {
+      if (!value) return null;
+      const asString = String(value).trim();
+      if (!asString) return null;
+      return asString.includes('T') ? asString.replace('T', ' ') + ':00' : asString;
+    };
 
-    logger.info(`Mission created by admin ${req.user.userId}: ${missionId}`);
+    const normalizedDeadline = normalizeDeadline(deadline);
+    const createdIds = [];
+
+    for (const action of normalizedActions) {
+      const missionId = await createMission({
+        title: normalizedActions.length > 1 ? `${title} [${action}]` : title,
+        description,
+        action_type: action,
+        points_per_proof,
+        max_per_user: max_per_user || 10,
+        deadline: normalizedDeadline
+      });
+      createdIds.push(missionId);
+    }
+
+    logger.info(`Mission(s) created by admin ${req.user.userId}: ${createdIds.join(',')}`);
 
     res.status(201).json({
       success: true,
-      missionId
+      missionId: createdIds[0],
+      missionIds: createdIds,
+      createdCount: createdIds.length
     });
   } catch (err) {
     logger.error('Error creating mission:', err);

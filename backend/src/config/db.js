@@ -22,7 +22,7 @@ export async function query(sql, values) {
     console.error('Database error:', err);
     throw err;
   } finally {
-    if (conn) return conn.end();
+    if (conn) conn.end();
   }
 }
 

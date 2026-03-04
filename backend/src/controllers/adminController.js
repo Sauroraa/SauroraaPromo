@@ -376,16 +376,30 @@ export async function createInvite(req, res) {
       return res.status(400).json({ error: 'Invalid role, allowed: promoter, staff' });
     }
 
+    const normalizedEmail = String(email).trim().toLowerCase();
     const adminId = req.user.userId;
     const expireDate = new Date();
     expireDate.setHours(expireDate.getHours() + inviteExpiresHours);
     const token = randomBytes(32).toString('hex');
     const code = `INV-${randomBytes(4).toString('hex').toUpperCase()}`;
 
+    const pendingInvite = await query(
+      `SELECT id FROM invites
+       WHERE email = ?
+         AND used_by IS NULL
+         AND expires_at > NOW()
+       LIMIT 1`,
+      [normalizedEmail]
+    );
+
+    if (pendingInvite.length > 0) {
+      return res.status(409).json({ error: 'Une invitation est deja en attente pour cet email' });
+    }
+
     await query(
       `INSERT INTO invites (email, first_name, last_name, phone, role, token, code, created_by, expires_at, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
-      [email, '', '', null, inviteRole, token, code, adminId, expireDate]
+      [normalizedEmail, '', '', null, inviteRole, token, code, adminId, expireDate]
     );
 
     const creator = await query(
@@ -397,23 +411,22 @@ export async function createInvite(req, res) {
     let emailSent = true;
     try {
       await sendInviteEmail({
-        to: email,
+        to: normalizedEmail,
         inviteToken: token,
-        inviteCode: code,
         expiresAt: expireDate,
         createdByName
       });
     } catch (err) {
       emailSent = false;
-      logger.warn(`Invite email failed for ${email}: ${err.message}`);
+      logger.warn(`Invite email failed for ${normalizedEmail}: ${err.message}`);
     }
 
-    logger.info(`Invite created by ${req.user.role} ${adminId} for ${email} (${inviteRole})`);
+    logger.info(`Invite created by ${req.user.role} ${adminId} for ${normalizedEmail} (${inviteRole})`);
 
     res.status(201).json({
       success: true,
       invite: {
-        email,
+        email: normalizedEmail,
         firstName: '',
         lastName: '',
         phone: null,
@@ -477,7 +490,6 @@ export async function resendInvite(req, res) {
       await sendInviteEmail({
         to: invite.email,
         inviteToken: token,
-        inviteCode: code,
         expiresAt: expireDate,
         createdByName
       });

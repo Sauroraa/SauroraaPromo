@@ -142,25 +142,30 @@ export async function sendProofRejectedEmail({ email, firstName, missionTitle, r
   });
 }
 
-export async function sendInviteEmail({ to, inviteToken, inviteCode, expiresAt, createdByName }) {
+export async function sendInviteEmail({ to, inviteToken, expiresAt, createdByName }) {
   const expireDate = new Date(expiresAt).toLocaleDateString('fr-FR', {
     day: 'numeric', month: 'long', year: 'numeric'
   });
   const registerUrl = `${FRONTEND_URL}/register?token=${inviteToken}`;
+  const inviter = createdByName || 'Sauroraa Promoteam';
 
   await send({
     to,
-    subject: 'Invitation à rejoindre Promoteam',
+    subject: `Invitation à rejoindre ${inviter} sur Promoteam`,
     html: baseTemplate(`
-      <h2>Tu es invité(e) !</h2>
-      <p>${createdByName} t'invite à rejoindre <span class="highlight">Promoteam</span>, la plateforme de gestion de promoteurs Instagram.</p>
-      ${inviteCode ? '<p>Utilise le code ci-dessous pour créer ton compte :</p>' : ''}
-      ${inviteCode ? `
-      <p style="background:#1e3a5f;border-radius:8px;padding:16px;font-size:24px;font-weight:700;letter-spacing:4px;color:#60a5fa;text-align:center;">
-        ${inviteCode}
-      </p>` : ''}
-      <p style="font-size:13px;color:#64748b;">Expire le ${expireDate}</p>
-      <a href="${registerUrl}" class="btn">Créer mon compte</a>
+      <h2>Tu es invite(e) a rejoindre Promoteam</h2>
+      <p>
+        <span class="highlight">${inviter}</span> t'invite a rejoindre la plateforme
+        <span class="highlight">Promoteam</span>.
+      </p>
+      <p>
+        En acceptant, tu pourras creer ton compte et acceder aux missions.
+        L'invitation expire le <span class="highlight">${expireDate}</span>.
+      </p>
+      <a href="${registerUrl}" class="btn">Accepter l'invitation</a>
+      <p style="font-size:12px;color:#64748b;margin-top:16px;">
+        Ou copie ce lien: ${registerUrl}
+      </p>
     `)
   });
 }

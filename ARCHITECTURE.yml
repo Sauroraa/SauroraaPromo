@@ -1,0 +1,42 @@
+version: '1.0'
+name: Promoteam
+description: Plateforme SaaS de gestion de promoteurs Instagram
+
+services:
+  - name: MariaDB
+    image: mariadb:11
+    status: Primary Database
+    ports: [3306]
+    
+  - name: Redis
+    image: redis:7-alpine
+    status: Cache & Sessions
+    ports: [6379]
+    
+  - name: Backend
+    language: JavaScript/Node.js
+    framework: Express.js
+    status: API Server
+    ports: [5000]
+    
+  - name: Frontend
+    language: JavaScript
+    framework: React + Vite
+    status: Web Application
+    ports: [5173]
+    
+  - name: Nginx
+    image: nginx:alpine
+    status: Reverse Proxy
+    ports: [80, 443]
+
+features:
+  - JWT Authentication
+  - Multi-image Upload
+  - Real-time Points
+  - Admin Dashboard
+  - Rate Limiting
+  - Image Compression
+  - Caching Layer
+  - SSL/TLS
+  - Logging System

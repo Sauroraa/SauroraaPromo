@@ -1,0 +1,28 @@
+{
+  "name": "promoteam",
+  "description": "Plateforme SaaS de gestion de promoteurs Instagram",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "setup": "bash setup.sh",
+    "dev": "docker-compose up -d && docker-compose logs -f",
+    "build": "docker-compose build",
+    "down": "docker-compose down",
+    "logs": "docker-compose logs -f",
+    "deploy": "bash deploy.sh",
+    "backup": "docker exec promoteam-db mysqldump -u promoteam -p$MYSQL_PASSWORD promoteam | gzip > backup-$(date +%Y%m%d-%H%M%S).sql.gz",
+    "clean": "docker-compose down -v && rm -rf uploads/* logs/*"
+  },
+  "keywords": [
+    "promoters",
+    "instagram",
+    "management",
+    "platform",
+    "saas",
+    "react",
+    "nodejs",
+    "mariadb"
+  ],
+  "author": "Sauroraa",
+  "license": "PROPRIETARY"
+}

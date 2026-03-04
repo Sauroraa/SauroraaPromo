@@ -1,9 +1,9 @@
-import mariadb from 'mariadb';
+import { createPool } from 'mariadb';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-const pool = mariadb.createPool({
+const pool = createPool({
   host: process.env.DB_HOST || 'mariadb',
   user: process.env.DB_USER || 'promoteam',
   password: process.env.DB_PASSWORD || 'promoteam_pass',

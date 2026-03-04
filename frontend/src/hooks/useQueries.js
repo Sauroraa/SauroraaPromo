@@ -178,3 +178,20 @@ export function useGenerateInvites() {
     mutationFn: ({ count, expiresIn }) => queries.adminApi.generateInvites(count, expiresIn)
   });
 }
+
+export function useAdminInvites() {
+  return useQuery({
+    queryKey: ['adminInvites'],
+    queryFn: () => queries.adminApi.getInvites().then(r => r.data)
+  });
+}
+
+export function useCreateInvite() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data) => queries.adminApi.createInvite(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminInvites'] });
+    }
+  });
+}

@@ -1,235 +1,247 @@
-import React, { useState } from 'react';
-import { useAdminUsers, useUpdateUserStatus, useGenerateInvites } from '../hooks/useQueries';
+import React, { useMemo, useState } from 'react';
+import { useAdminUsers, useAdminInvites, useCreateInvite, useUpdateUserStatus } from '../hooks/useQueries';
 import toast from 'react-hot-toast';
 
-const STATUS_COLORS = {
-  active: 'bg-green-900 text-green-400',
-  suspended: 'bg-yellow-900 text-yellow-400',
-  inactive: 'bg-slate-700 text-slate-400'
-};
-
-const STATUS_LABELS = {
+const statusLabel = {
   active: 'Actif',
   suspended: 'Suspendu',
   inactive: 'Inactif'
 };
 
+function statusClass(status) {
+  if (status === 'active') return 'chip chip-success';
+  if (status === 'suspended') return 'chip chip-warning';
+  return 'chip';
+}
+
 export default function AdminUsersPage() {
-  const { data: users, isLoading } = useAdminUsers();
+  const { data: users = [], isLoading } = useAdminUsers();
+  const { data: invitesData } = useAdminInvites();
   const { mutate: updateStatus } = useUpdateUserStatus();
-  const { mutate: generateInvites, isPending: isGenerating } = useGenerateInvites();
+  const { mutate: createInvite, isPending: inviteSubmitting } = useCreateInvite();
 
   const [search, setSearch] = useState('');
-  const [inviteCount, setInviteCount] = useState(5);
-  const [inviteExpiry, setInviteExpiry] = useState(30);
-  const [generatedCodes, setGeneratedCodes] = useState([]);
+  const [form, setForm] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    role: 'promoter',
+    expiresHours: 48
+  });
 
-  const filtered = (users ?? []).filter(u =>
-    u.insta_username.toLowerCase().includes(search.toLowerCase()) ||
-    u.email.toLowerCase().includes(search.toLowerCase()) ||
-    `${u.first_name} ${u.last_name}`.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredUsers = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return users;
+    return users.filter((u) =>
+      String(u.insta_username || '').toLowerCase().includes(q) ||
+      String(u.email || '').toLowerCase().includes(q) ||
+      `${u.first_name || ''} ${u.last_name || ''}`.toLowerCase().includes(q)
+    );
+  }, [users, search]);
 
-  const handleStatusChange = (userId, newStatus) => {
-    updateStatus({ id: userId, status: newStatus }, {
-      onSuccess: () => toast.success(`Statut mis à jour : ${STATUS_LABELS[newStatus]}`),
-      onError: (err) => toast.error(err.response?.data?.error || 'Erreur')
-    });
+  const invites = invitesData?.invites || [];
+
+  const handleStatusChange = (userId, status) => {
+    updateStatus(
+      { id: userId, status },
+      {
+        onSuccess: () => toast.success('Statut utilisateur mis à jour'),
+        onError: (err) => toast.error(err.response?.data?.error || 'Erreur de mise à jour')
+      }
+    );
   };
 
-  const handleGenerateInvites = () => {
-    generateInvites({ count: inviteCount, expiresIn: inviteExpiry }, {
+  const handleInviteSubmit = (e) => {
+    e.preventDefault();
+    createInvite(form, {
       onSuccess: (res) => {
-        setGeneratedCodes(res.data?.invites ?? []);
-        toast.success(`${inviteCount} code(s) d'invitation générés`);
+        const invite = res?.data?.invite;
+        toast.success('Invitation envoyée');
+        if (invite?.token) {
+          navigator.clipboard?.writeText(`https://promoteam.sauroraa.be/register?token=${invite.token}`);
+        }
+        setForm({
+          firstName: '',
+          lastName: '',
+          email: '',
+          phone: '',
+          role: 'promoter',
+          expiresHours: 48
+        });
       },
-      onError: (err) => toast.error(err.response?.data?.error || 'Erreur')
+      onError: (err) => toast.error(err.response?.data?.error || 'Erreur d’invitation')
     });
   };
 
-  const copyToClipboard = (text) => {
-    navigator.clipboard.writeText(text).then(() => toast.success('Copié !'));
-  };
-
-  if (isLoading) return <div className="text-center text-slate-400 py-8">Chargement...</div>;
+  if (isLoading) return <div className="page-loading">Chargement...</div>;
 
   return (
-    <div className="max-w-7xl mx-auto">
-      <h1 className="text-3xl font-bold text-white mb-8">Gestion des utilisateurs</h1>
+    <div className="page-wrap">
+      <div className="page-head">
+        <h1 className="page-title">Gestion des Utilisateurs</h1>
+        <p className="page-subtitle">Administration promoteurs, staff et invitations.</p>
+      </div>
 
-      <div className="grid grid-cols-3 gap-6 mb-8">
-        <div className="col-span-2">
-          {/* Search */}
-          <div className="mb-4">
+      <div className="stats-grid">
+        <div className="metric-card">
+          <span className="metric-label">Promoteurs</span>
+          <strong className="metric-value">{users.filter((u) => u.role === 'promoter').length}</strong>
+        </div>
+        <div className="metric-card">
+          <span className="metric-label">Actifs</span>
+          <strong className="metric-value">{users.filter((u) => u.status === 'active').length}</strong>
+        </div>
+        <div className="metric-card">
+          <span className="metric-label">Suspendus</span>
+          <strong className="metric-value">{users.filter((u) => u.status === 'suspended').length}</strong>
+        </div>
+        <div className="metric-card">
+          <span className="metric-label">Invitations</span>
+          <strong className="metric-value">{invites.length}</strong>
+        </div>
+      </div>
+
+      <div className="split-grid">
+        <section className="surface-card">
+          <div className="section-head">
+            <h2>Utilisateurs</h2>
             <input
               type="text"
-              placeholder="Rechercher par pseudo, email ou nom..."
+              placeholder="Rechercher pseudo, email, nom..."
               value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="input"
+              onChange={(e) => setSearch(e.target.value)}
+              className="ui-input"
             />
           </div>
 
-          {/* Users table */}
-          <div className="card p-0 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="border-b border-slate-700">
+          <div className="table-wrap">
+            <table className="ui-table">
+              <thead>
+                <tr>
+                  <th>Utilisateur</th>
+                  <th>Email</th>
+                  <th>Points</th>
+                  <th>Rôle</th>
+                  <th>Statut</th>
+                  <th>Inscrit</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredUsers.length === 0 && (
                   <tr>
-                    <th className="text-left py-3 px-4 text-slate-400 text-sm font-medium">Utilisateur</th>
-                    <th className="text-left py-3 px-4 text-slate-400 text-sm font-medium">Email</th>
-                    <th className="text-center py-3 px-4 text-slate-400 text-sm font-medium">Points</th>
-                    <th className="text-center py-3 px-4 text-slate-400 text-sm font-medium">Rôle</th>
-                    <th className="text-center py-3 px-4 text-slate-400 text-sm font-medium">Statut</th>
-                    <th className="text-center py-3 px-4 text-slate-400 text-sm font-medium">Inscrit</th>
-                    <th className="text-center py-3 px-4 text-slate-400 text-sm font-medium">Actions</th>
+                    <td colSpan={7} className="table-empty">Aucun résultat</td>
                   </tr>
-                </thead>
-                <tbody>
-                  {filtered.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="text-center py-8 text-slate-500">
-                        Aucun utilisateur trouvé
-                      </td>
-                    </tr>
-                  ) : (
-                    filtered.map(user => (
-                      <tr key={user.id} className="border-b border-slate-700 hover:bg-slate-700 transition">
-                        <td className="py-3 px-4">
-                          <p className="text-white font-medium">@{user.insta_username}</p>
-                          <p className="text-xs text-slate-400">{user.first_name} {user.last_name}</p>
-                        </td>
-                        <td className="py-3 px-4 text-slate-300 text-sm">{user.email}</td>
-                        <td className="py-3 px-4 text-center text-green-400 font-bold">
-                          {user.points_total}
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <span className={`text-xs px-2 py-0.5 rounded-full ${
-                            user.role === 'admin'
-                              ? 'bg-purple-900 text-purple-400'
-                              : 'bg-slate-700 text-slate-400'
-                          }`}>
-                            {user.role}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[user.status]}`}>
-                            {STATUS_LABELS[user.status]}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-center text-slate-400 text-xs">
-                          {new Date(user.created_at).toLocaleDateString('fr-FR')}
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          {user.role !== 'admin' && (
-                            <select
-                              value={user.status}
-                              onChange={e => handleStatusChange(user.id, e.target.value)}
-                              className="text-xs bg-slate-700 text-slate-300 border border-slate-600 rounded px-2 py-1"
-                            >
-                              <option value="active">Actif</option>
-                              <option value="suspended">Suspendre</option>
-                              <option value="inactive">Inactif</option>
-                            </select>
-                          )}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+                )}
+                {filteredUsers.map((u) => (
+                  <tr key={u.id}>
+                    <td>
+                      <div className="table-user">
+                        <strong>@{u.insta_username}</strong>
+                        <span>{u.first_name} {u.last_name}</span>
+                      </div>
+                    </td>
+                    <td>{u.email}</td>
+                    <td>{u.points_total}</td>
+                    <td><span className="chip">{u.role}</span></td>
+                    <td><span className={statusClass(u.status)}>{statusLabel[u.status] || u.status}</span></td>
+                    <td>{new Date(u.created_at).toLocaleDateString('fr-FR')}</td>
+                    <td>
+                      {u.role === 'admin' ? (
+                        <span className="cell-muted">Locked</span>
+                      ) : (
+                        <select
+                          className="ui-select-sm"
+                          value={u.status}
+                          onChange={(e) => handleStatusChange(u.id, e.target.value)}
+                        >
+                          <option value="active">Actif</option>
+                          <option value="suspended">Suspendu</option>
+                          <option value="inactive">Inactif</option>
+                        </select>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        </div>
+        </section>
 
-        {/* Right column: invite generator */}
-        <div className="col-span-1">
-          <div className="card">
-            <h2 className="text-white font-bold text-lg mb-4">Codes d'invitation</h2>
-
-            <div className="space-y-3 mb-4">
-              <div>
-                <label className="text-slate-400 text-xs">Nombre de codes</label>
-                <input
-                  type="number"
-                  value={inviteCount}
-                  onChange={e => setInviteCount(Math.min(50, Math.max(1, parseInt(e.target.value) || 1)))}
-                  className="input mt-1"
-                  min="1" max="50"
-                />
-              </div>
-              <div>
-                <label className="text-slate-400 text-xs">Expire dans (jours)</label>
-                <input
-                  type="number"
-                  value={inviteExpiry}
-                  onChange={e => setInviteExpiry(Math.min(365, Math.max(1, parseInt(e.target.value) || 1)))}
-                  className="input mt-1"
-                  min="1" max="365"
-                />
-              </div>
+        <section className="surface-card">
+          <h2 className="section-title">Inviter un Utilisateur</h2>
+          <form className="invite-form" onSubmit={handleInviteSubmit}>
+            <div className="form-grid-2">
+              <input
+                className="ui-input"
+                placeholder="Prénom"
+                value={form.firstName}
+                onChange={(e) => setForm((s) => ({ ...s, firstName: e.target.value }))}
+                required
+              />
+              <input
+                className="ui-input"
+                placeholder="Nom"
+                value={form.lastName}
+                onChange={(e) => setForm((s) => ({ ...s, lastName: e.target.value }))}
+                required
+              />
             </div>
-
-            <button
-              onClick={handleGenerateInvites}
-              disabled={isGenerating}
-              className="btn btn-primary w-full"
-            >
-              {isGenerating ? 'Génération...' : `Générer ${inviteCount} code(s)`}
+            <input
+              className="ui-input"
+              type="email"
+              placeholder="Email"
+              value={form.email}
+              onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))}
+              required
+            />
+            <input
+              className="ui-input"
+              placeholder="Téléphone (optionnel)"
+              value={form.phone}
+              onChange={(e) => setForm((s) => ({ ...s, phone: e.target.value }))}
+            />
+            <div className="form-grid-2">
+              <select
+                className="ui-select"
+                value={form.role}
+                onChange={(e) => setForm((s) => ({ ...s, role: e.target.value }))}
+              >
+                <option value="promoter">Promoteur</option>
+                <option value="staff">Staff</option>
+              </select>
+              <input
+                className="ui-input"
+                type="number"
+                min={1}
+                max={168}
+                value={form.expiresHours}
+                onChange={(e) => setForm((s) => ({ ...s, expiresHours: Number(e.target.value) || 48 }))}
+                placeholder="Durée (heures)"
+              />
+            </div>
+            <button className="ui-btn-primary" type="submit" disabled={inviteSubmitting}>
+              {inviteSubmitting ? 'Envoi...' : 'Envoyer l’invitation'}
             </button>
+          </form>
 
-            {generatedCodes.length > 0 && (
-              <div className="mt-4">
-                <div className="flex justify-between items-center mb-2">
-                  <p className="text-slate-400 text-sm">Codes générés :</p>
-                  <button
-                    onClick={() => copyToClipboard(generatedCodes.join('\n'))}
-                    className="text-xs text-blue-400 hover:underline"
-                  >
-                    Copier tout
-                  </button>
+          <div className="invite-list">
+            <h3>Dernières invitations</h3>
+            {invites.slice(0, 6).map((inv) => (
+              <div className="invite-item" key={inv.id}>
+                <div>
+                  <strong>{inv.first_name} {inv.last_name}</strong>
+                  <p>{inv.email}</p>
                 </div>
-                <div className="space-y-1 max-h-64 overflow-y-auto">
-                  {generatedCodes.map(code => (
-                    <div
-                      key={code}
-                      onClick={() => copyToClipboard(code)}
-                      className="flex items-center justify-between bg-slate-700 rounded px-3 py-2 cursor-pointer hover:bg-slate-600 transition"
-                    >
-                      <span className="text-sm font-mono text-blue-300">{code}</span>
-                      <span className="text-xs text-slate-500">copier</span>
-                    </div>
-                  ))}
-                </div>
+                <span className={inv.used_at ? 'chip chip-success' : 'chip chip-warning'}>
+                  {inv.used_at ? 'Acceptée' : 'En attente'}
+                </span>
               </div>
-            )}
+            ))}
+            {invites.length === 0 && <p className="cell-muted">Aucune invitation pour le moment.</p>}
           </div>
-
-          {/* Stats rapides */}
-          <div className="card mt-4">
-            <h2 className="text-white font-bold mb-3">Résumé</h2>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-slate-400">Total promoteurs</span>
-                <span className="text-white font-medium">
-                  {(users ?? []).filter(u => u.role === 'promoter').length}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Actifs</span>
-                <span className="text-green-400 font-medium">
-                  {(users ?? []).filter(u => u.status === 'active' && u.role === 'promoter').length}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Suspendus</span>
-                <span className="text-yellow-400 font-medium">
-                  {(users ?? []).filter(u => u.status === 'suspended').length}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
+        </section>
       </div>
     </div>
   );

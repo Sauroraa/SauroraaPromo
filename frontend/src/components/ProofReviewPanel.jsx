@@ -52,7 +52,7 @@ export default function ProofReviewPanel() {
       setSelectedId(null);
       return;
     }
-    const exists = proofs.some((proof) => proof.id === selectedId);
+    const exists = proofs.some((proof) => Number(proof.id) === Number(selectedId));
     if (!selectedId || !exists) {
       setSelectedId(proofs[0].id);
     }

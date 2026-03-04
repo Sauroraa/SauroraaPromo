@@ -45,31 +45,45 @@ export async function getProofForReview(req, res) {
   try {
     const proofId = req.params.proofId;
 
-    let proof;
-    try {
-      proof = await query(
-        `SELECT p.*, u.id as user_id, u.insta_username, u.first_name, u.last_name, m.title, m.points_per_proof
-         FROM proofs p
-         JOIN users u ON p.user_id = u.id
-         JOIN missions m ON p.mission_id = m.id
-         WHERE p.id = ?`,
-        [proofId]
-      );
-    } catch (err) {
-      if (err?.code !== 'ER_BAD_FIELD_ERROR') throw err;
-      logger.warn(`Falling back proof detail query for proof ${proofId}: ${err.message}`);
-      proof = await query(
-        `SELECT p.*, u.id as user_id, u.insta_username, m.title, 0 as points_per_proof
-         FROM proofs p
-         JOIN users u ON p.user_id = u.id
-         JOIN missions m ON p.mission_id = m.id
-         WHERE p.id = ?`,
-        [proofId]
-      );
+    const proofRows = await query(
+      `SELECT id, user_id, mission_id, status, images_count, reject_reason, created_at, reviewed_at, reviewed_by
+       FROM proofs
+       WHERE id = ?`,
+      [proofId]
+    );
+
+    if (proofRows.length === 0) {
+      return res.status(404).json({ error: 'Proof not found' });
     }
 
-    if (proof.length === 0) {
-      return res.status(404).json({ error: 'Proof not found' });
+    const proof = proofRows[0];
+
+    let user = null;
+    try {
+      const userRows = await query(
+        `SELECT id, insta_username, first_name, last_name
+         FROM users
+         WHERE id = ?
+         LIMIT 1`,
+        [proof.user_id]
+      );
+      user = userRows[0] || null;
+    } catch (err) {
+      logger.warn(`User lookup failed for proof ${proofId}: ${err.message}`);
+    }
+
+    let mission = null;
+    try {
+      const missionRows = await query(
+        `SELECT id, title, points_per_proof
+         FROM missions
+         WHERE id = ?
+         LIMIT 1`,
+        [proof.mission_id]
+      );
+      mission = missionRows[0] || null;
+    } catch (err) {
+      logger.warn(`Mission lookup failed for proof ${proofId}: ${err.message}`);
     }
 
     let images;
@@ -88,7 +102,13 @@ export async function getProofForReview(req, res) {
     }
 
     res.json({
-      ...proof[0],
+      ...proof,
+      user_id: user?.id ?? proof.user_id,
+      insta_username: user?.insta_username || 'unknown',
+      first_name: user?.first_name || '',
+      last_name: user?.last_name || '',
+      title: mission?.title || 'Mission',
+      points_per_proof: Number(mission?.points_per_proof ?? 0),
       images
     });
   } catch (err) {

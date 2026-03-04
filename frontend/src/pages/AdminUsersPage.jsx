@@ -4,6 +4,7 @@ import {
   useAdminInvites,
   useCreateInvite,
   useUpdateUserStatus,
+  useUpdateUserPoints,
   useResendInvite,
   useDeleteInvite
 } from '../hooks/useQueries';
@@ -25,11 +26,13 @@ export default function AdminUsersPage() {
   const { data: users = [], isLoading } = useAdminUsers();
   const { data: invitesData } = useAdminInvites();
   const { mutate: updateStatus } = useUpdateUserStatus();
+  const { mutate: updatePoints, isPending: pointsUpdating } = useUpdateUserPoints();
   const { mutate: createInvite, isPending: inviteSubmitting } = useCreateInvite();
   const { mutate: resendInvite, isPending: resendSubmitting } = useResendInvite();
   const { mutate: deleteInvite, isPending: deleteSubmitting } = useDeleteInvite();
 
   const [search, setSearch] = useState('');
+  const [pointsDrafts, setPointsDrafts] = useState({});
   const [form, setForm] = useState({
     email: '',
     role: 'promoter'
@@ -47,12 +50,39 @@ export default function AdminUsersPage() {
 
   const invites = invitesData?.invites || [];
 
+  const getDraftPoints = (userId) => pointsDrafts[userId] ?? '';
+
   const handleStatusChange = (userId, status) => {
     updateStatus(
       { id: userId, status },
       {
         onSuccess: () => toast.success('Statut utilisateur mis à jour'),
         onError: (err) => toast.error(err.response?.data?.error || 'Erreur de mise à jour')
+      }
+    );
+  };
+
+  const handlePointsChange = (userId, value) => {
+    setPointsDrafts((prev) => ({ ...prev, [userId]: value }));
+  };
+
+  const handlePointsApply = (userId, username) => {
+    const raw = String(getDraftPoints(userId)).trim();
+    const parsed = Number(raw);
+    if (!Number.isFinite(parsed) || Math.trunc(parsed) !== parsed || parsed === 0) {
+      toast.error('Entrez un entier non nul (ex: 50 ou -20)');
+      return;
+    }
+
+    updatePoints(
+      { id: userId, points: parsed, reason: 'Ajustement manuel admin' },
+      {
+        onSuccess: (res) => {
+          const total = res?.data?.points_total ?? '?';
+          toast.success(`Points mis a jour pour @${username} (total: ${total})`);
+          setPointsDrafts((prev) => ({ ...prev, [userId]: '' }));
+        },
+        onError: (err) => toast.error(err.response?.data?.error || 'Erreur mise a jour points')
       }
     );
   };
@@ -152,7 +182,7 @@ export default function AdminUsersPage() {
                   <th>Rôle</th>
                   <th>Statut</th>
                   <th>Inscrit</th>
-                  <th>Action</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -175,19 +205,41 @@ export default function AdminUsersPage() {
                     <td><span className={statusClass(u.status)}>{statusLabel[u.status] || u.status}</span></td>
                     <td>{new Date(u.created_at).toLocaleDateString('fr-FR')}</td>
                     <td>
-                      {u.role === 'admin' ? (
-                        <span className="cell-muted">Locked</span>
-                      ) : (
-                        <select
-                          className="ui-select-sm"
-                          value={u.status}
-                          onChange={(e) => handleStatusChange(u.id, e.target.value)}
-                        >
-                          <option value="active">Actif</option>
-                          <option value="suspended">Suspendu</option>
-                          <option value="inactive">Inactif</option>
-                        </select>
-                      )}
+                      <div style={{ display: 'grid', gap: '8px' }}>
+                        {u.role === 'admin' ? (
+                          <span className="cell-muted">Locked</span>
+                        ) : (
+                          <select
+                            className="ui-select-sm"
+                            value={u.status}
+                            onChange={(e) => handleStatusChange(u.id, e.target.value)}
+                          >
+                            <option value="active">Actif</option>
+                            <option value="suspended">Suspendu</option>
+                            <option value="inactive">Inactif</option>
+                          </select>
+                        )}
+
+                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                          <input
+                            className="ui-input"
+                            style={{ maxWidth: '90px', height: '32px', padding: '0 10px' }}
+                            type="number"
+                            placeholder="+/-"
+                            value={getDraftPoints(u.id)}
+                            onChange={(e) => handlePointsChange(u.id, e.target.value)}
+                          />
+                          <button
+                            type="button"
+                            className="ui-btn-ghost"
+                            style={{ height: '32px', padding: '0 10px' }}
+                            onClick={() => handlePointsApply(u.id, u.insta_username)}
+                            disabled={pointsUpdating}
+                          >
+                            Points
+                          </button>
+                        </div>
+                      </div>
                     </td>
                   </tr>
                 ))}

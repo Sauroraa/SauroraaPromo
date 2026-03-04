@@ -56,6 +56,7 @@ export const adminApi = {
   
   getUsers: (limit = 50, offset = 0) => api.get(`/admin/users?limit=${limit}&offset=${offset}`),
   updateUserStatus: (id, status) => api.patch(`/admin/users/${id}/status`, { status }),
+  updateUserPoints: (id, points, reason) => api.patch(`/admin/users/${id}/points`, { points, reason }),
 
   getInvites: () => api.get('/admin/invites'),
   createInvite: (data) => api.post('/admin/invite', data),

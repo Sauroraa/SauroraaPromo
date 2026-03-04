@@ -215,6 +215,18 @@ export function useUpdateUserStatus() {
   });
 }
 
+export function useUpdateUserPoints() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, points, reason }) => queries.adminApi.updateUserPoints(id, points, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminUsers'] });
+      queryClient.invalidateQueries({ queryKey: ['adminStats'] });
+      queryClient.invalidateQueries({ queryKey: ['leaderboard'] });
+    }
+  });
+}
+
 export function useGenerateInvites() {
   return useMutation({
     mutationFn: ({ count, expiresIn }) => queries.adminApi.generateInvites(count, expiresIn)

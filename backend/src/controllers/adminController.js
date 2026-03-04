@@ -386,6 +386,70 @@ export async function updateUserStatus(req, res) {
   }
 }
 
+export async function updateUserPoints(req, res) {
+  try {
+    const userId = Number(req.params.userId);
+    const delta = Number(req.body?.points);
+    const reason = String(req.body?.reason || 'Ajustement manuel admin').trim().slice(0, 255);
+
+    if (!Number.isInteger(userId) || userId <= 0) {
+      return res.status(400).json({ error: 'Invalid user id' });
+    }
+    if (!Number.isFinite(delta) || Math.trunc(delta) !== delta || delta === 0) {
+      return res.status(400).json({ error: 'Points must be a non-zero integer' });
+    }
+    if (Math.abs(delta) > 100000) {
+      return res.status(400).json({ error: 'Points amount is too large' });
+    }
+
+    const userRows = await query(
+      `SELECT id, role, points_total FROM users WHERE id = ? LIMIT 1`,
+      [userId]
+    );
+    if (userRows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const targetUser = userRows[0];
+    if (targetUser.role === 'admin' && req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Only admin can edit admin points' });
+    }
+
+    await query(
+      `UPDATE users
+       SET points_total = GREATEST(0, points_total + ?)
+       WHERE id = ?`,
+      [delta, userId]
+    );
+
+    const updatedRows = await query(
+      `SELECT points_total FROM users WHERE id = ? LIMIT 1`,
+      [userId]
+    );
+    const newTotal = Number(updatedRows?.[0]?.points_total ?? 0);
+
+    try {
+      await query(
+        `INSERT INTO admin_logs (admin_id, action, target_id, details, created_at)
+         VALUES (?, 'adjust_points', ?, ?, NOW())`,
+        [
+          req.user.userId,
+          userId,
+          JSON.stringify({ delta, reason, previousTotal: Number(targetUser.points_total), newTotal })
+        ]
+      );
+    } catch (logErr) {
+      logger.warn(`Failed to log points adjustment for user ${userId}: ${logErr.message}`);
+    }
+
+    logger.info(`User ${userId} points adjusted by ${delta} (admin ${req.user.userId})`);
+    return res.json({ success: true, userId, delta, points_total: newTotal });
+  } catch (err) {
+    logger.error('Error updating user points:', err);
+    return res.status(500).json({ error: 'Failed to update user points' });
+  }
+}
+
 // INVITES
 
 export async function getInvites(req, res) {

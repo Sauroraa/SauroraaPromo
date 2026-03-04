@@ -13,6 +13,7 @@ import {
   getTopPromoters,
   getAllUsers,
   updateUserStatus,
+  updateUserPoints,
   createInvite,
   getInvites,
   generateInvites,
@@ -46,6 +47,7 @@ router.get('/top-promoters', getTopPromoters);
 // Users
 router.get('/users', getAllUsers);
 router.patch('/users/:userId/status', updateUserStatus);
+router.patch('/users/:userId/points', updateUserPoints);
 
 // Invites
 router.get('/invites', getInvites);

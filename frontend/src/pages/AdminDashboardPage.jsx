@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAdminProofs, useAdminStats } from '../hooks/useQueries';
+import { useAuthStore } from '../lib/store';
 
 function proofStatusLabel(status) {
   if (status === 'approved') return 'Approuvee';
@@ -16,6 +17,8 @@ function proofStatusClass(status) {
 }
 
 export default function AdminDashboardPage() {
+  const { user } = useAuthStore();
+  const isAdmin = user?.role === 'admin';
   const { data: stats, isLoading } = useAdminStats();
   const { data: proofsData } = useAdminProofs('all', 8);
   const proofs = proofsData?.proofs || [];
@@ -25,8 +28,12 @@ export default function AdminDashboardPage() {
   return (
     <div className="page-wrap">
       <div className="page-head">
-        <h1 className="page-title">Dashboard Admin</h1>
-        <p className="page-subtitle">Pilotage global de la plateforme Promoteam.</p>
+        <h1 className="page-title">{isAdmin ? 'Dashboard Admin' : 'Dashboard Staff'}</h1>
+        <p className="page-subtitle">
+          {isAdmin
+            ? 'Pilotage global de la plateforme Promoteam.'
+            : 'Suivi operationnel des missions et validations Promoteam.'}
+        </p>
       </div>
 
       <div className="stats-grid">
@@ -63,9 +70,15 @@ export default function AdminDashboardPage() {
             <Link to="/admin/missions" className="ui-btn-ghost" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px', textDecoration: 'none' }}>
               Gerer les missions
             </Link>
-            <Link to="/admin/users" className="ui-btn-ghost" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px', textDecoration: 'none' }}>
-              Gerer les utilisateurs
-            </Link>
+            {isAdmin ? (
+              <Link to="/admin/users" className="ui-btn-ghost" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px', textDecoration: 'none' }}>
+                Gerer les utilisateurs
+              </Link>
+            ) : (
+              <Link to="/admin/invites" className="ui-btn-ghost" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px', textDecoration: 'none' }}>
+                Gerer les invitations
+              </Link>
+            )}
           </div>
         </section>
 

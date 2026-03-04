@@ -11,6 +11,7 @@ import missionsRoutes from './routes/missions.js';
 import proofsRoutes from './routes/proofs.js';
 import usersRoutes from './routes/users.js';
 import adminRoutes from './routes/admin.js';
+import inviteRoutes from './routes/invite.js';
 
 // Middleware
 import { globalLimiter } from './middleware/rateLimit.js';
@@ -24,6 +25,7 @@ dotenv.config();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
+app.set('trust proxy', 1);
 
 // Security
 app.use(helmet());
@@ -51,9 +53,14 @@ app.use('/api/missions', missionsRoutes);
 app.use('/api/proofs', authMiddleware, proofsRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/invite', inviteRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
+  res.json({ status: 'ok' });
+});
+
+app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 

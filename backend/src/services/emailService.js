@@ -138,10 +138,11 @@ export async function sendProofRejectedEmail({ email, firstName, missionTitle, r
   });
 }
 
-export async function sendInviteEmail({ to, inviteCode, expiresAt, createdByName }) {
+export async function sendInviteEmail({ to, inviteToken, inviteCode, expiresAt, createdByName }) {
   const expireDate = new Date(expiresAt).toLocaleDateString('fr-FR', {
     day: 'numeric', month: 'long', year: 'numeric'
   });
+  const registerUrl = `${FRONTEND_URL}/register?token=${inviteToken}`;
 
   await send({
     to,
@@ -149,12 +150,13 @@ export async function sendInviteEmail({ to, inviteCode, expiresAt, createdByName
     html: baseTemplate(`
       <h2>Tu es invité(e) !</h2>
       <p>${createdByName} t'invite à rejoindre <span class="highlight">Promoteam</span>, la plateforme de gestion de promoteurs Instagram.</p>
-      <p>Utilise le code ci-dessous pour créer ton compte :</p>
+      ${inviteCode ? '<p>Utilise le code ci-dessous pour créer ton compte :</p>' : ''}
+      ${inviteCode ? `
       <p style="background:#1e3a5f;border-radius:8px;padding:16px;font-size:24px;font-weight:700;letter-spacing:4px;color:#60a5fa;text-align:center;">
         ${inviteCode}
-      </p>
+      </p>` : ''}
       <p style="font-size:13px;color:#64748b;">Expire le ${expireDate}</p>
-      <a href="${FRONTEND_URL}/register?code=${inviteCode}" class="btn">Créer mon compte</a>
+      <a href="${registerUrl}" class="btn">Créer mon compte</a>
     `)
   });
 }

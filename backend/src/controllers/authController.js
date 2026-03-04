@@ -5,22 +5,79 @@ import logger from '../utils/logger.js';
 import redis from '../config/redis.js';
 import { sendWelcomeEmail } from '../services/emailService.js';
 
+async function getValidInvite(tokenOrCode) {
+  const inviteRows = await query(
+    `SELECT *
+     FROM invites
+     WHERE (token = ? OR code = ?)
+       AND used_by IS NULL
+       AND expires_at > NOW()
+     LIMIT 1`,
+    [tokenOrCode, tokenOrCode]
+  );
+
+  return inviteRows[0] || null;
+}
+
+async function insertUserWithOptionalPhone({ firstName, lastName, phone, instaUsername, email, passwordHash, role }) {
+  try {
+    return await query(
+      `INSERT INTO users (first_name, last_name, phone, insta_username, email, password_hash, role, points_total, status, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 0, 'active', NOW())`,
+      [firstName, lastName, phone || null, instaUsername, email, passwordHash, role]
+    );
+  } catch (err) {
+    if (String(err?.message || '').includes("Unknown column 'phone'")) {
+      return query(
+        `INSERT INTO users (first_name, last_name, insta_username, email, password_hash, role, points_total, status, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, 0, 'active', NOW())`,
+        [firstName, lastName, instaUsername, email, passwordHash, role]
+      );
+    }
+    throw err;
+  }
+}
+
+async function markInviteAsUsed(inviteId, userId) {
+  try {
+    await query(
+      `UPDATE invites SET used_by = ?, used_at = NOW() WHERE id = ?`,
+      [userId, inviteId]
+    );
+  } catch (err) {
+    if (String(err?.message || '').includes("Unknown column 'used_at'")) {
+      await query(
+        `UPDATE invites SET used_by = ? WHERE id = ?`,
+        [userId, inviteId]
+      );
+      return;
+    }
+    throw err;
+  }
+}
+
 export async function register(req, res) {
   try {
-    const { firstName, lastName, instaUsername, email, password, inviteCode } = req.body;
+    const inviteToken = req.body.inviteToken || req.body.token || req.body.inviteCode || req.body.code;
+    const invite = await getValidInvite(inviteToken);
+    if (!invite) {
+      return res.status(403).json({ error: 'Code d\'invitation invalide ou expiré' });
+    }
+
+    const firstName = req.body.firstName || invite.first_name;
+    const lastName = req.body.lastName || invite.last_name;
+    const phone = req.body.phone || invite.phone || null;
+    const instaUsername = req.body.instaUsername || req.body.instagramUsername;
+    const email = req.body.email || invite.email;
+    const password = req.body.password;
+    const role = invite.role || 'promoter';
 
     if (!firstName || !lastName || !instaUsername || !email || !password) {
       return res.status(400).json({ error: 'Champs requis manquants' });
     }
 
-    // Invite code always required — admins are created via seed script only
-    const invite = await query(
-      `SELECT * FROM invites WHERE code = ? AND used_by IS NULL AND expires_at > NOW()`,
-      [inviteCode]
-    );
-
-    if (invite.length === 0) {
-      return res.status(403).json({ error: 'Code d\'invitation invalide ou expiré' });
+    if (invite.email && email.toLowerCase() !== invite.email.toLowerCase()) {
+      return res.status(400).json({ error: 'L\'email ne correspond pas à l\'invitation' });
     }
 
     // Check if user exists
@@ -35,19 +92,20 @@ export async function register(req, res) {
 
     const passwordHash = await hashPassword(password);
 
-    const result = await query(
-      `INSERT INTO users (first_name, last_name, insta_username, email, password_hash, role, points_total, status, created_at)
-       VALUES (?, ?, ?, ?, ?, 'promoter', 0, 'active', NOW())`,
-      [firstName, lastName, instaUsername, email, passwordHash]
-    );
+    const result = await insertUserWithOptionalPhone({
+      firstName,
+      lastName,
+      phone,
+      instaUsername,
+      email,
+      passwordHash,
+      role
+    });
 
     const userId = result.insertId;
 
     // Mark invite as used
-    await query(
-      `UPDATE invites SET used_by = ? WHERE code = ?`,
-      [userId, inviteCode]
-    );
+    await markInviteAsUsed(invite.id, userId);
 
     logger.info(`New user registered: ${userId} (${email})`);
 
@@ -63,7 +121,7 @@ export async function register(req, res) {
 
     res.status(201).json({
       success: true,
-      user: { id: userId, email, instaUsername, firstName, lastName, role: 'promoter' },
+      user: { id: userId, email, instaUsername, firstName, lastName, phone, role },
       accessToken,
       refreshToken: refreshTokenStr
     });
@@ -143,7 +201,7 @@ export async function logout(req, res) {
 export async function getCurrentUser(req, res) {
   try {
     const result = await query(
-      `SELECT id, email, insta_username, first_name, last_name, role, points_total, status, created_at, last_login
+      `SELECT id, email, insta_username, first_name, last_name, phone, role, points_total, status, created_at, last_login
        FROM users WHERE id = ?`,
       [req.user.userId]
     );
@@ -159,6 +217,7 @@ export async function getCurrentUser(req, res) {
       instaUsername: user.insta_username,
       firstName: user.first_name,
       lastName: user.last_name,
+      phone: user.phone || null,
       role: user.role,
       pointsTotal: user.points_total,
       status: user.status,
@@ -211,4 +270,30 @@ export async function refreshToken(req, res) {
     logger.error('Refresh token error:', err);
     res.status(500).json({ error: 'Erreur de renouvellement du token' });
   }
+}
+
+export async function getInviteByToken(req, res) {
+  try {
+    const token = req.params.token;
+    const invite = await getValidInvite(token);
+    if (!invite) {
+      return res.status(404).json({ error: 'Invitation invalide ou expirée' });
+    }
+
+    res.json({
+      email: invite.email,
+      firstName: invite.first_name,
+      lastName: invite.last_name,
+      phone: invite.phone || null,
+      role: invite.role || 'promoter',
+      expiresAt: invite.expires_at
+    });
+  } catch (err) {
+    logger.error('Get invite by token error:', err);
+    res.status(500).json({ error: 'Erreur de récupération de l\'invitation' });
+  }
+}
+
+export async function acceptInvite(req, res) {
+  return register(req, res);
 }

@@ -1,0 +1,33 @@
+USE promoteam;
+
+ALTER TABLE users
+  MODIFY COLUMN role ENUM('admin', 'staff', 'promoter') DEFAULT 'promoter';
+
+ALTER TABLE users
+  ADD COLUMN IF NOT EXISTS phone VARCHAR(30) NULL AFTER last_name;
+
+ALTER TABLE invites
+  ADD COLUMN IF NOT EXISTS email VARCHAR(255) NULL,
+  ADD COLUMN IF NOT EXISTS first_name VARCHAR(100) NULL,
+  ADD COLUMN IF NOT EXISTS last_name VARCHAR(100) NULL,
+  ADD COLUMN IF NOT EXISTS phone VARCHAR(30) NULL,
+  ADD COLUMN IF NOT EXISTS role ENUM('promoter', 'staff') DEFAULT 'promoter',
+  ADD COLUMN IF NOT EXISTS token VARCHAR(255) NULL,
+  ADD COLUMN IF NOT EXISTS used_at TIMESTAMP NULL;
+
+UPDATE invites
+SET role = 'promoter'
+WHERE role IS NULL;
+
+UPDATE invites
+SET token = IFNULL(token, LOWER(REPLACE(UUID(), '-', '')))
+WHERE token IS NULL;
+
+ALTER TABLE invites
+  MODIFY COLUMN email VARCHAR(255) NOT NULL,
+  MODIFY COLUMN first_name VARCHAR(100) NOT NULL,
+  MODIFY COLUMN last_name VARCHAR(100) NOT NULL,
+  MODIFY COLUMN token VARCHAR(255) NOT NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_invites_token_unique ON invites(token);
+CREATE INDEX IF NOT EXISTS idx_invites_email ON invites(email);

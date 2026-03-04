@@ -29,45 +29,45 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center">
-      <div className="w-full max-w-md">
-        <div className="card text-center">
-          <h1 className="text-4xl font-bold text-blue-400 mb-2">Promoteam</h1>
-          <p className="text-slate-400 mb-8">Plateforme de gestion de promoteurs</p>
+    <div className="login-shell">
+      <div className="login-card">
+        <p className="login-kicker">Sauroraa Promoteam</p>
+        <h1 className="login-title">Connexion</h1>
+        <p className="login-subtitle">Plateforme interne de gestion des promoteurs</p>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <input
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="input"
-              required
-            />
+        <form onSubmit={handleSubmit} className="login-form">
+          <label className="login-label" htmlFor="email">Email</label>
+          <input
+            id="email"
+            type="email"
+            placeholder="vous@exemple.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="login-input"
+            required
+          />
 
-            <input
-              type="password"
-              placeholder="Mot de passe"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="input"
-              required
-            />
+          <label className="login-label" htmlFor="password">Mot de passe</label>
+          <input
+            id="password"
+            type="password"
+            placeholder="Votre mot de passe"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="login-input"
+            required
+          />
 
-            <button
-              type="submit"
-              disabled={isPending}
-              className="btn btn-primary w-full"
-            >
-              {isPending ? 'Connexion...' : 'Se connecter'}
-            </button>
-          </form>
-
-          <p className="text-slate-400 mt-6 text-sm">
-            Démonstration: admin@promoteam.sauroraa.be / admin123
-          </p>
-        </div>
+          <button
+            type="submit"
+            disabled={isPending}
+            className="login-button"
+          >
+            {isPending ? 'Connexion...' : 'Se connecter'}
+          </button>
+        </form>
       </div>
+      <div className="login-glow" aria-hidden />
     </div>
   );
 }

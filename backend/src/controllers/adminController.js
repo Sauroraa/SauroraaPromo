@@ -2,6 +2,8 @@ import { query } from '../config/db.js';
 import logger from '../utils/logger.js';
 import { approveProof, rejectProof } from '../services/proofService.js';
 import { createMission, updateMission, deleteMission, getAllMissions } from '../services/missionService.js';
+import { randomBytes } from 'crypto';
+import { sendInviteEmail } from '../services/emailService.js';
 
 // PROOFS
 
@@ -297,40 +299,85 @@ export async function updateUserStatus(req, res) {
 
 // INVITES
 
-export async function generateInvites(req, res) {
+export async function getInvites(req, res) {
   try {
-    const { count, expiresIn } = req.body;
+    const invites = await query(
+      `SELECT i.id, i.email, i.first_name, i.last_name, i.phone, i.role, i.token, i.code,
+              i.expires_at, i.used_at, i.created_at, i.used_by, u.email AS created_by_email
+       FROM invites i
+       LEFT JOIN users u ON u.id = i.created_by
+       ORDER BY i.created_at DESC
+       LIMIT 200`
+    );
 
-    if (!count || count < 1 || count > 100) {
-      return res.status(400).json({ error: 'Count must be between 1 and 100' });
+    res.json({ invites });
+  } catch (err) {
+    logger.error('Error fetching invites:', err);
+    res.status(500).json({ error: 'Failed to fetch invites' });
+  }
+}
+
+export async function createInvite(req, res) {
+  try {
+    const { firstName, lastName, email, phone, role, expiresHours } = req.body;
+    const inviteRole = role || 'promoter';
+    const inviteExpiresHours = parseInt(expiresHours, 10) || 48;
+
+    if (!firstName || !lastName || !email) {
+      return res.status(400).json({ error: 'Missing required fields: firstName, lastName, email' });
+    }
+
+    if (!['promoter', 'staff'].includes(inviteRole)) {
+      return res.status(400).json({ error: 'Invalid role, allowed: promoter, staff' });
     }
 
     const adminId = req.user.userId;
-    const inviteCodes = [];
-
     const expireDate = new Date();
-    expireDate.setDate(expireDate.getDate() + (expiresIn || 30));
+    expireDate.setHours(expireDate.getHours() + inviteExpiresHours);
+    const token = randomBytes(32).toString('hex');
+    const code = `INV-${randomBytes(4).toString('hex').toUpperCase()}`;
 
-    for (let i = 0; i < count; i++) {
-      const code = `INV-${Date.now()}-${Math.random().toString(36).substring(7)}`.toUpperCase();
+    await query(
+      `INSERT INTO invites (email, first_name, last_name, phone, role, token, code, created_by, expires_at, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+      [email, firstName, lastName, phone || null, inviteRole, token, code, adminId, expireDate]
+    );
 
-      await query(
-        `INSERT INTO invites (code, created_by, expires_at, created_at)
-         VALUES (?, ?, ?, NOW())`,
-        [code, adminId, expireDate]
-      );
+    const creator = await query(
+      `SELECT CONCAT(first_name, ' ', last_name) AS full_name FROM users WHERE id = ? LIMIT 1`,
+      [adminId]
+    );
+    const createdByName = creator[0]?.full_name || 'Un membre de l\'équipe';
 
-      inviteCodes.push(code);
-    }
+    sendInviteEmail({
+      to: email,
+      inviteToken: token,
+      inviteCode: code,
+      expiresAt: expireDate,
+      createdByName
+    }).catch((err) => logger.warn('Invite email failed:', err.message));
 
-    logger.info(`Generated ${count} invite codes by admin ${adminId}`);
+    logger.info(`Invite created by ${req.user.role} ${adminId} for ${email} (${inviteRole})`);
 
-    res.json({
+    res.status(201).json({
       success: true,
-      invites: inviteCodes
+      invite: {
+        email,
+        firstName,
+        lastName,
+        phone: phone || null,
+        role: inviteRole,
+        token,
+        code,
+        expiresAt: expireDate
+      }
     });
   } catch (err) {
-    logger.error('Error generating invites:', err);
-    res.status(500).json({ error: 'Failed to generate invites' });
+    logger.error('Error creating invite:', err);
+    res.status(500).json({ error: 'Failed to create invite' });
   }
+}
+
+export async function generateInvites(req, res) {
+  return createInvite(req, res);
 }

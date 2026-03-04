@@ -7,10 +7,11 @@ CREATE TABLE IF NOT EXISTS users (
   id INT PRIMARY KEY AUTO_INCREMENT,
   first_name VARCHAR(100) NOT NULL,
   last_name VARCHAR(100) NOT NULL,
+  phone VARCHAR(30) NULL,
   insta_username VARCHAR(100) UNIQUE NOT NULL,
   email VARCHAR(255) UNIQUE NOT NULL,
   password_hash VARCHAR(255) NOT NULL,
-  role ENUM('admin', 'promoter') DEFAULT 'promoter',
+  role ENUM('admin', 'staff', 'promoter') DEFAULT 'promoter',
   points_total INT DEFAULT 0,
   status ENUM('active', 'suspended', 'inactive') DEFAULT 'active',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -23,14 +24,22 @@ CREATE TABLE IF NOT EXISTS users (
 -- Invites table
 CREATE TABLE IF NOT EXISTS invites (
   id INT PRIMARY KEY AUTO_INCREMENT,
-  code VARCHAR(100) UNIQUE NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  first_name VARCHAR(100) NOT NULL,
+  last_name VARCHAR(100) NOT NULL,
+  phone VARCHAR(30) NULL,
+  role ENUM('promoter', 'staff') DEFAULT 'promoter',
+  token VARCHAR(255) UNIQUE NOT NULL,
+  code VARCHAR(100) UNIQUE NULL,
   created_by INT NOT NULL,
   used_by INT NULL,
+  used_at TIMESTAMP NULL,
   expires_at TIMESTAMP NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_email (email),
+  INDEX idx_token (token),
   FOREIGN KEY (created_by) REFERENCES users(id),
   FOREIGN KEY (used_by) REFERENCES users(id),
-  INDEX idx_code (code),
   INDEX idx_expires (expires_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

@@ -14,6 +14,135 @@ body {
   color: #e2e8f0;
 }
 
+#root {
+  min-height: 100vh;
+}
+
+.login-shell {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  position: relative;
+  background: radial-gradient(1200px 600px at 15% -10%, rgba(59, 130, 246, 0.18), transparent 60%),
+              radial-gradient(900px 450px at 90% 110%, rgba(16, 185, 129, 0.16), transparent 60%),
+              #0b1326;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 460px;
+  padding: 36px 30px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 18px;
+  background: rgba(15, 23, 42, 0.86);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 20px 50px rgba(2, 6, 23, 0.45);
+  position: relative;
+  z-index: 2;
+}
+
+.login-kicker {
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  margin-bottom: 10px;
+}
+
+.login-title {
+  font-size: 34px;
+  line-height: 1.1;
+  font-weight: 700;
+  color: #f8fafc;
+  margin-bottom: 8px;
+}
+
+.login-subtitle {
+  color: #94a3b8;
+  margin-bottom: 22px;
+}
+
+.login-form {
+  display: grid;
+  gap: 12px;
+}
+
+.login-label {
+  font-size: 13px;
+  color: #cbd5e1;
+}
+
+.login-input {
+  width: 100%;
+  border: 1px solid #334155;
+  background: #0f172a;
+  color: #f8fafc;
+  border-radius: 10px;
+  padding: 11px 12px;
+  outline: none;
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+
+.login-input::placeholder {
+  color: #64748b;
+}
+
+.login-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+}
+
+.login-button {
+  margin-top: 8px;
+  border: 0;
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-weight: 600;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #fff;
+  cursor: pointer;
+  transition: transform .15s ease, filter .2s ease;
+}
+
+.login-button:hover {
+  filter: brightness(1.08);
+}
+
+.login-button:active {
+  transform: translateY(1px);
+}
+
+.login-button:disabled {
+  opacity: .6;
+  cursor: default;
+}
+
+.login-glow {
+  width: 380px;
+  height: 380px;
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.22) 0%, rgba(59, 130, 246, 0.02) 62%, transparent 70%);
+  filter: blur(8px);
+  top: 8%;
+  right: 8%;
+  z-index: 1;
+  pointer-events: none;
+}
+
+@media (max-width: 640px) {
+  .login-card {
+    padding: 28px 20px;
+    border-radius: 14px;
+  }
+
+  .login-title {
+    font-size: 28px;
+  }
+}
+
 .container {
   @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
 }

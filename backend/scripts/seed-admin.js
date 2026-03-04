@@ -18,12 +18,16 @@ const pool = mariadb.createPool({
   connectionLimit: 1
 });
 
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@promoteam.sauroraa.be';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Admin2024!';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
 async function seed() {
   let conn;
   try {
+    if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
+      throw new Error('ADMIN_EMAIL and ADMIN_PASSWORD are required in environment');
+    }
+
     conn = await pool.getConnection();
 
     // Check if admin already exists

@@ -13,14 +13,16 @@ import {
   getTopPromoters,
   getAllUsers,
   updateUserStatus,
+  createInvite,
+  getInvites,
   generateInvites
 } from '../controllers/adminController.js';
-import { authMiddleware, adminMiddleware } from '../middleware/auth.js';
+import { authMiddleware, roleMiddleware } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// All admin routes require auth + admin role
-router.use(authMiddleware, adminMiddleware);
+// Admin panel routes: shared between admin and staff for operational tasks
+router.use(authMiddleware, roleMiddleware(['admin', 'staff']));
 
 // Proofs
 router.get('/proofs', getAllProofs);
@@ -44,6 +46,8 @@ router.get('/users', getAllUsers);
 router.patch('/users/:userId/status', updateUserStatus);
 
 // Invites
+router.get('/invites', getInvites);
+router.post('/invite', createInvite);
 router.post('/invites', generateInvites);
 
 export default router;

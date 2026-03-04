@@ -48,6 +48,12 @@ function ProtectedRoute({ children, adminOnly = false }) {
   );
 }
 
+function LandingRoute() {
+  const { isLoggedIn, user } = useAuthStore();
+  if (!isLoggedIn) return <Navigate to="/login" replace />;
+  return <Navigate to={user?.role === 'admin' ? '/admin' : '/dashboard'} replace />;
+}
+
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -70,8 +76,8 @@ export default function App() {
           <Route path="/admin/users" element={<ProtectedRoute adminOnly><AdminUsersPage /></ProtectedRoute>} />
 
           {/* Redirects */}
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/" element={<LandingRoute />} />
+          <Route path="*" element={<LandingRoute />} />
         </Routes>
       </Router>
       <Toaster position="top-right" toastOptions={{ duration: 3000 }} />

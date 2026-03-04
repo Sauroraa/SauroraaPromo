@@ -82,7 +82,7 @@ export default function MissionForm({ onSuccess }) {
         <input
           type="number"
           name="points_per_proof"
-          placeholder="Points par preuve"
+          placeholder="Points mission"
           value={formData.points_per_proof}
           onChange={handleChange}
           className="input"

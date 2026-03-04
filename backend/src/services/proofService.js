@@ -63,7 +63,9 @@ export async function approveProof(proofId, adminId) {
     [adminId, proofId]
   );
 
-  const pointsToAward = proof.images_count * proof.points_per_proof;
+  // Business rule: mission validation awards fixed points once,
+  // regardless of the number of uploaded images.
+  const pointsToAward = Number(proof.points_per_proof || 0);
 
   await query(
     `INSERT INTO points_history (user_id, proof_id, points, reason, created_at)

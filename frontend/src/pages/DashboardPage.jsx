@@ -68,7 +68,7 @@ export default function DashboardPage() {
                   </div>
 
                   <div className="mission-tags">
-                    <span className="chip chip-success">+{mission.points_per_proof} pt / preuve</span>
+                    <span className="chip chip-success">+{mission.points_per_proof} pts / mission</span>
                     <span className="chip">Max: {mission.max_per_user}</span>
                   </div>
 

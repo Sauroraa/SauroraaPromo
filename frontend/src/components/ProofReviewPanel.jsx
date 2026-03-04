@@ -166,7 +166,7 @@ export default function ProofReviewPanel() {
               <p className="cell-muted">{detail.title}</p>
               <div className="mission-tags">
                 <span className="chip">{detail.images_count} image(s)</span>
-                <span className="chip">{detail.points_per_proof} pts / image</span>
+                <span className="chip">{detail.points_per_proof} pts / mission</span>
                 <span className="chip">{new Date(detail.created_at).toLocaleDateString('fr-FR')}</span>
               </div>
 

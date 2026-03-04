@@ -220,7 +220,7 @@ export default function AdminMissionsPage() {
                 min={1}
                 value={form.points_per_proof}
                 onChange={(e) => setForm((s) => ({ ...s, points_per_proof: e.target.value }))}
-                placeholder="Points / preuve"
+                placeholder="Points mission"
                 required
               />
             </div>
@@ -291,7 +291,7 @@ export default function AdminMissionsPage() {
 
                   <div className="mission-tags">
                     <span className="chip">{mission.action_type}</span>
-                    <span className="chip">{mission.points_per_proof} pts / preuve</span>
+                    <span className="chip">{mission.points_per_proof} pts / mission</span>
                     <span className="chip">Max {mission.max_per_user}</span>
                     {mission.deadline && (
                       <span className="chip">

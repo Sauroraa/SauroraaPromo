@@ -23,7 +23,7 @@ export default function MissionUploadPage() {
           <h2 className="section-title">Details mission</h2>
           <div className="mission-tags">
             <span className="chip">{mission.action_type}</span>
-            <span className="chip chip-success">+{mission.points_per_proof} pts / preuve</span>
+            <span className="chip chip-success">+{mission.points_per_proof} pts / mission validee</span>
             <span className="chip">Max {mission.max_per_user}</span>
             {mission.deadline && (
               <span className="chip">Echeance: {new Date(mission.deadline).toLocaleDateString('fr-FR')}</span>

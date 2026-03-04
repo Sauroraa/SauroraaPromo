@@ -5,9 +5,10 @@ import DropzoneUpload from '../components/DropzoneUpload';
 
 export default function MissionUploadPage() {
   const { missionId } = useParams();
-  const { data: mission, isLoading } = useMissionDetail(missionId);
+  const { data: mission, isLoading, isError } = useMissionDetail(missionId);
 
   if (isLoading) return <div className="page-loading">Chargement...</div>;
+  if (isError) return <div className="page-loading">Impossible de charger la mission pour le moment.</div>;
   if (!mission) return <div className="page-loading">Mission non trouvee</div>;
 
   return (

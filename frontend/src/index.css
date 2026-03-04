@@ -997,6 +997,93 @@ body {
   border: 1px solid #2f3b4d;
 }
 
+.upload-widget {
+  width: 100%;
+}
+
+.upload-dropzone {
+  border: 2px dashed #334155;
+  border-radius: 14px;
+  padding: 22px;
+  text-align: center;
+  cursor: pointer;
+  background: #0f172a;
+  transition: border-color .2s ease, background .2s ease;
+}
+
+.upload-dropzone:hover {
+  border-color: #4b5563;
+}
+
+.upload-dropzone-active {
+  border-color: #6366f1;
+  background: rgba(99, 102, 241, 0.12);
+}
+
+.upload-title {
+  color: #e2e8f0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.upload-subtitle {
+  margin-top: 6px;
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.upload-preview-panel {
+  margin-top: 14px;
+  border: 1px solid #2f3b4d;
+  border-radius: 12px;
+  background: #0f172a;
+  padding: 12px;
+}
+
+.upload-preview-grid {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  max-height: 380px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.upload-preview-item {
+  position: relative;
+  border-radius: 10px;
+  border: 1px solid #334155;
+  overflow: hidden;
+  background: #111827;
+}
+
+.upload-preview-image {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  display: block;
+}
+
+.upload-remove-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.9);
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.upload-submit-btn {
+  width: 100%;
+  margin-top: 12px;
+}
+
 .reject-modal {
   width: min(520px, 100%);
 }
@@ -1029,6 +1116,10 @@ body {
   .proof-grid,
   .proof-admin-images {
     grid-template-columns: 1fr;
+  }
+
+  .upload-preview-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .mission-action-grid {
@@ -1084,6 +1175,11 @@ body {
   .proof-grid,
   .proof-admin-images {
     grid-template-columns: 1fr;
+  }
+
+  .upload-preview-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-height: 320px;
   }
 
   .topbar-right {

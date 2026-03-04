@@ -12,17 +12,27 @@ export default function DropzoneUpload({ missionId, onSuccess }) {
     maxFiles: 10,
     maxSize: 5 * 1024 * 1024,
     onDrop: (files) => {
-      const newPreviews = files.map(file => ({
-        id: Math.random(),
+      const allowedSlots = Math.max(0, 10 - preview.length);
+      const selected = files.slice(0, allowedSlots);
+      if (files.length > selected.length) {
+        toast.error('Maximum 10 images par envoi');
+      }
+
+      const newPreviews = selected.map(file => ({
+        id: `${file.name}-${file.size}-${file.lastModified}-${Math.random()}`,
         file,
         preview: URL.createObjectURL(file)
       }));
-      setPreview([...preview, ...newPreviews]);
+      setPreview((prev) => [...prev, ...newPreviews]);
     }
   });
 
   const removeImage = (id) => {
-    setPreview(preview.filter(p => p.id !== id));
+    setPreview((prev) => {
+      const target = prev.find((p) => p.id === id);
+      if (target?.preview) URL.revokeObjectURL(target.preview);
+      return prev.filter((p) => p.id !== id);
+    });
   };
 
   const handleSubmit = async () => {
@@ -40,51 +50,51 @@ export default function DropzoneUpload({ missionId, onSuccess }) {
 
     submitProof(formData, {
       onSuccess: () => {
-        toast.success('Preuves soumises avec succès!');
+        toast.success('Preuves soumises avec succes');
+        preview.forEach((p) => {
+          if (p.preview) URL.revokeObjectURL(p.preview);
+        });
         setPreview([]);
         onSuccess?.();
       },
       onError: (err) => {
-        toast.error(err.response?.data?.error || 'Erreur lors de la soumission');
+        toast.error(err.response?.data?.error || 'Erreur lors de la soumission des preuves');
       }
     });
   };
 
   return (
-    <div className="w-full">
+    <div className="upload-widget">
       <div
         {...getRootProps()}
-        className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition ${
-          isDragActive
-            ? 'border-blue-500 bg-blue-500 bg-opacity-10'
-            : 'border-slate-600 hover:border-slate-500'
-        }`}
+        className={`upload-dropzone ${isDragActive ? 'upload-dropzone-active' : ''}`}
       >
         <input {...getInputProps()} />
         {isDragActive ? (
-          <p className="text-blue-400 font-medium">Déposez les images ici...</p>
+          <p className="upload-title">Deposez les images ici...</p>
         ) : (
           <div>
-            <p className="text-slate-300">📤 Déposez les images ou cliquez pour sélectionner</p>
-            <p className="text-xs text-slate-500 mt-2">Max 10 images, 5MB chacune</p>
+            <p className="upload-title">Deposez les images ou cliquez pour selectionner</p>
+            <p className="upload-subtitle">Max 10 images, 5MB chacune (jpg/png/webp)</p>
           </div>
         )}
       </div>
 
       {preview.length > 0 && (
-        <div className="mt-6">
-          <h3 className="text-white font-medium mb-4">Aperçu ({preview.length}/10)</h3>
-          <div className="grid grid-cols-4 gap-4">
-            {preview.map(p => (
-              <div key={p.id} className="relative group">
+        <div className="upload-preview-panel">
+          <h3 className="section-title">Apercu ({preview.length}/10)</h3>
+          <div className="upload-preview-grid">
+            {preview.map((p) => (
+              <div key={p.id} className="upload-preview-item">
                 <img
                   src={p.preview}
                   alt="preview"
-                  className="w-full h-24 object-cover rounded-lg"
+                  className="upload-preview-image"
                 />
                 <button
+                  type="button"
                   onClick={() => removeImage(p.id)}
-                  className="absolute top-1 right-1 bg-red-600 text-white p-1 rounded opacity-0 group-hover:opacity-100 transition"
+                  className="upload-remove-btn"
                 >
                   ✕
                 </button>
@@ -93,9 +103,10 @@ export default function DropzoneUpload({ missionId, onSuccess }) {
           </div>
 
           <button
+            type="button"
             onClick={handleSubmit}
             disabled={isPending}
-            className="btn btn-primary mt-4 w-full"
+            className="ui-btn-primary upload-submit-btn"
           >
             {isPending ? 'Envoi en cours...' : 'Soumettre les preuves'}
           </button>

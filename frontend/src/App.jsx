@@ -10,6 +10,7 @@ import Sidebar from './components/Sidebar';
 
 // Pages
 import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
 import MissionsPage from './pages/MissionsPage';
 import MissionUploadPage from './pages/MissionUploadPage';
@@ -62,6 +63,7 @@ export default function App() {
       <Router>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
 
           {/* Promoter Routes */}
           <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />

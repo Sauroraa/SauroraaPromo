@@ -10,6 +10,18 @@ export function useRegister() {
   return useMutation({ mutationFn: queries.authApi.register });
 }
 
+export function useInvite(token) {
+  return useQuery({
+    queryKey: ['invite', token],
+    queryFn: () => queries.authApi.getInvite(token).then(r => r.data),
+    enabled: !!token
+  });
+}
+
+export function useAcceptInvite() {
+  return useMutation({ mutationFn: queries.authApi.acceptInvite });
+}
+
 export function useCurrentUser() {
   return useQuery({
     queryKey: ['currentUser'],

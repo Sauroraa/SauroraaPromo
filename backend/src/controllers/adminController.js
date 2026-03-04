@@ -391,3 +391,90 @@ export async function createInvite(req, res) {
 export async function generateInvites(req, res) {
   return createInvite(req, res);
 }
+
+export async function resendInvite(req, res) {
+  try {
+    const inviteId = req.params.inviteId;
+    const inviteRows = await query(
+      `SELECT id, email, role, used_by FROM invites WHERE id = ? LIMIT 1`,
+      [inviteId]
+    );
+
+    if (inviteRows.length === 0) {
+      return res.status(404).json({ error: 'Invitation introuvable' });
+    }
+
+    const invite = inviteRows[0];
+    if (invite.used_by) {
+      return res.status(400).json({ error: 'Invitation deja utilisee' });
+    }
+
+    const token = randomBytes(32).toString('hex');
+    const code = `INV-${randomBytes(4).toString('hex').toUpperCase()}`;
+    const expireDate = new Date();
+    expireDate.setHours(expireDate.getHours() + 24 * 7);
+
+    await query(
+      `UPDATE invites
+       SET token = ?, code = ?, expires_at = ?, used_at = NULL
+       WHERE id = ?`,
+      [token, code, expireDate, inviteId]
+    );
+
+    const creator = await query(
+      `SELECT CONCAT(first_name, ' ', last_name) AS full_name FROM users WHERE id = ? LIMIT 1`,
+      [req.user.userId]
+    );
+    const createdByName = creator[0]?.full_name || 'Un membre de l\'equipe';
+
+    let emailSent = true;
+    try {
+      await sendInviteEmail({
+        to: invite.email,
+        inviteToken: token,
+        inviteCode: code,
+        expiresAt: expireDate,
+        createdByName
+      });
+    } catch (err) {
+      emailSent = false;
+      logger.warn(`Invite resend email failed for ${invite.email}: ${err.message}`);
+    }
+
+    return res.json({
+      success: true,
+      invite: {
+        id: inviteId,
+        email: invite.email,
+        role: invite.role,
+        token,
+        code,
+        expiresAt: expireDate,
+        emailSent
+      },
+      message: emailSent
+        ? 'Invitation renvoyee par email'
+        : 'Invitation mise a jour mais email non envoye (SMTP a verifier)'
+    });
+  } catch (err) {
+    logger.error('Error resending invite:', err);
+    res.status(500).json({ error: 'Failed to resend invite' });
+  }
+}
+
+export async function deleteInvite(req, res) {
+  try {
+    const inviteId = req.params.inviteId;
+    const result = await query(`DELETE FROM invites WHERE id = ?`, [inviteId]);
+
+    if (!result?.affectedRows) {
+      return res.status(404).json({ error: 'Invitation introuvable' });
+    }
+
+    logger.info(`Invite ${inviteId} deleted by ${req.user.role} ${req.user.userId}`);
+    res.json({ success: true });
+  } catch (err) {
+    logger.error('Error deleting invite:', err);
+    res.status(500).json({ error: 'Failed to delete invite' });
+  }
+}

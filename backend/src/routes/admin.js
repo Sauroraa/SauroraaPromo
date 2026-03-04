@@ -15,7 +15,9 @@ import {
   updateUserStatus,
   createInvite,
   getInvites,
-  generateInvites
+  generateInvites,
+  resendInvite,
+  deleteInvite
 } from '../controllers/adminController.js';
 import { authMiddleware, roleMiddleware } from '../middleware/auth.js';
 
@@ -49,5 +51,7 @@ router.patch('/users/:userId/status', updateUserStatus);
 router.get('/invites', getInvites);
 router.post('/invite', createInvite);
 router.post('/invites', generateInvites);
+router.post('/invites/:inviteId/resend', resendInvite);
+router.delete('/invites/:inviteId', deleteInvite);
 
 export default router;

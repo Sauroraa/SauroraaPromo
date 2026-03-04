@@ -234,3 +234,23 @@ export function useCreateInvite() {
     }
   });
 }
+
+export function useResendInvite() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id) => queries.adminApi.resendInvite(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminInvites'] });
+    }
+  });
+}
+
+export function useDeleteInvite() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id) => queries.adminApi.deleteInvite(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminInvites'] });
+    }
+  });
+}

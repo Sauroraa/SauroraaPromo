@@ -1,5 +1,12 @@
 import React, { useMemo, useState } from 'react';
-import { useAdminUsers, useAdminInvites, useCreateInvite, useUpdateUserStatus } from '../hooks/useQueries';
+import {
+  useAdminUsers,
+  useAdminInvites,
+  useCreateInvite,
+  useUpdateUserStatus,
+  useResendInvite,
+  useDeleteInvite
+} from '../hooks/useQueries';
 import toast from 'react-hot-toast';
 
 const statusLabel = {
@@ -19,6 +26,8 @@ export default function AdminUsersPage() {
   const { data: invitesData } = useAdminInvites();
   const { mutate: updateStatus } = useUpdateUserStatus();
   const { mutate: createInvite, isPending: inviteSubmitting } = useCreateInvite();
+  const { mutate: resendInvite, isPending: resendSubmitting } = useResendInvite();
+  const { mutate: deleteInvite, isPending: deleteSubmitting } = useDeleteInvite();
 
   const [search, setSearch] = useState('');
   const [form, setForm] = useState({
@@ -67,6 +76,28 @@ export default function AdminUsersPage() {
         });
       },
       onError: (err) => toast.error(err.response?.data?.error || 'Erreur d’invitation')
+    });
+  };
+
+  const handleResendInvite = (inviteId) => {
+    resendInvite(inviteId, {
+      onSuccess: (res) => {
+        if (res?.data?.invite?.emailSent) {
+          toast.success('Invitation renvoyee');
+        } else {
+          toast.error('Invitation renvoyee mais email non envoye (SMTP)');
+        }
+      },
+      onError: (err) => toast.error(err.response?.data?.error || 'Erreur lors du renvoi')
+    });
+  };
+
+  const handleDeleteInvite = (inviteId) => {
+    const ok = window.confirm('Supprimer cette invitation ?');
+    if (!ok) return;
+    deleteInvite(inviteId, {
+      onSuccess: () => toast.success('Invitation supprimee'),
+      onError: (err) => toast.error(err.response?.data?.error || 'Erreur lors de la suppression')
     });
   };
 
@@ -197,10 +228,35 @@ export default function AdminUsersPage() {
                 <div>
                   <strong>{inv.first_name || inv.last_name ? `${inv.first_name} ${inv.last_name}` : 'Invitation email'}</strong>
                   <p>{inv.email}</p>
+                  <p className="cell-muted">Expire: {new Date(inv.expires_at).toLocaleDateString('fr-FR')}</p>
                 </div>
-                <span className={inv.used_at ? 'chip chip-success' : 'chip chip-warning'}>
-                  {inv.used_at ? 'Acceptée' : 'En attente'}
-                </span>
+                <div style={{ display: 'grid', gap: '6px', justifyItems: 'end' }}>
+                  <span className={inv.used_at ? 'chip chip-success' : 'chip chip-warning'}>
+                    {inv.used_at ? 'Acceptée' : 'En attente'}
+                  </span>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    {!inv.used_at && (
+                      <button
+                        className="ui-btn-ghost"
+                        style={{ height: '30px', padding: '0 10px' }}
+                        onClick={() => handleResendInvite(inv.id)}
+                        disabled={resendSubmitting}
+                        type="button"
+                      >
+                        Renvoyer
+                      </button>
+                    )}
+                    <button
+                      className="ui-btn-danger"
+                      style={{ height: '30px', padding: '0 10px' }}
+                      onClick={() => handleDeleteInvite(inv.id)}
+                      disabled={deleteSubmitting}
+                      type="button"
+                    >
+                      Supprimer
+                    </button>
+                  </div>
+                </div>
               </div>
             ))}
             {invites.length === 0 && <p className="cell-muted">Aucune invitation pour le moment.</p>}
